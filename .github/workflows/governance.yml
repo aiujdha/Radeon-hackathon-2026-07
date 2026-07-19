@@ -1,0 +1,38 @@
+name: Governance
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-title:
+    name: PR title / official submission format
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/validate_pr_title.py --title "${{ github.event.pull_request.title }}"
+
+  hygiene-and-specs:
+    name: Hygiene and specifications
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check whitespace and conflict markers
+        run: |
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            git diff --check HEAD^ HEAD
+          else
+            git diff --check
+          fi
+          ! grep -R -n -E '^(<<<<<<<|=======|>>>>>>>)' --exclude-dir=.git .
+      - name: Validate specifications
+        run: python scripts/validate_specs.py --strict
+      - name: Test governance scripts
+        run: python -m unittest discover -s tests -p 'test_*.py'
