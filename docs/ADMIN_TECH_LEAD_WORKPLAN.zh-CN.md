@@ -21,6 +21,83 @@
 4. 每个结论是否能回到来源文件、页码、章节或 Sheet？
 5. 失败时是否能定位到文件解析、检索、规则判定、模型调用或报告生成？
 
+## 2.1 你亲自开发的代码模块
+
+你不是只负责 GitHub 和云端。你应亲自完成“应用骨架、模型接入、受控编排和集成 API”，这是队友的 RAG/报告功能能落地的前提。
+
+| 优先级 | 你要开发的模块 | 主要文件建议 | 完成标准 |
+| --- | --- | --- | --- |
+| P0 | 应用配置与启动 | `app/config.py`、`app/main.py`、`.env.example` | 应用能启动；配置缺失有明确报错；目录自动检查 |
+| P0 | 模型网关 | `app/llm/client.py`、`app/llm/metrics.py` | 调用 `qwen3.6-office-agent` 成功；可读取健康状态、模型名、响应耗时 |
+| P0 | 公共数据 Schema | `app/schemas/project.py`、`task.py`、`evidence.py`、`report.py` | 队友可直接导入；非法输入被 Pydantic 拒绝 |
+| P1 | 项目与路径安全 | `app/services/projects.py`、`app/security/paths.py` | 每个项目只能访问自己的 `source/`、`derived/`、`outputs/` |
+| P1 | FastAPI 骨架 | `app/api/projects.py`、`runs.py`、`health.py` | 可创建项目、触发导入/运行、查询运行状态；接口有测试 |
+| P1 | 受控周报编排器 | `app/agent/runner.py`、`rules.py`、`state.py` | 固定执行“检索→规则判断→模型解释→报告”；最多 8 步；禁止自由 Shell |
+| P2 | 确认、日志与集成 | `app/services/confirmations.py`、`app/observability/audit.py` | 覆盖/修改操作必须确认；每次运行有 run_id 和 JSONL 日志 |
+| P2 | 云端启动与诊断脚本 | `scripts/start_api.sh`、`start_ui.sh`、`diagnose.sh` | 新实例按 README 可启动、诊断并验证模型服务 |
+
+## 2.2 你的首周编码顺序
+
+### Day 1：可启动骨架
+
+- [ ] 建立 Python 项目依赖、`app/` 目录和 `.env.example`。
+- [ ] 编写 `Settings`，集中管理 LLM、项目路径、SQLite、输出和最大步骤配置。
+- [ ] 编写 `GET /health`：同时报告 API 自身状态和 llama-server 连接状态。
+- [ ] 编写最小测试：缺失配置、非法端口、模型服务不可达。
+
+**当天验收**：本地/云端执行启动命令后，`curl http://127.0.0.1:9000/health` 返回 JSON；模型离线时返回受控错误而非崩溃。
+
+### Day 2：模型客户端与公共契约
+
+- [ ] 实现 OpenAI 兼容 `LLMClient`，默认调用 `qwen3.6-office-agent`。
+- [ ] 提供两种固定调用：普通文本生成与低温度结构化 JSON 生成。
+- [ ] 建立 `Project`、`Task`、`Evidence`、`TaskEvaluation`、`RunState`、`ReportDraft` Schema。
+- [ ] 和队友确定这些 Schema 后冻结字段；新增字段通过 PR 评审。
+
+**当天验收**：用模型生成一个 `TaskEvaluation` JSON；非法 JSON 能被重试一次并最终返回结构化错误。
+
+### Day 3：项目 API 与路径边界
+
+- [ ] `POST /api/projects` 创建 `project_id` 和受控目录。
+- [ ] `GET /api/projects/{project_id}` 返回项目元数据和导入状态。
+- [ ] 实现 `ensure_project_path()`，拒绝 `..`、绝对路径、符号链接逃逸和项目目录外路径。
+- [ ] 交给队友的接口：传入 `project_id` 获得合法 `source/` 路径，而不是传入任意文件系统路径。
+
+**当天验收**：正常项目路径可用；`../../etc/passwd`、其他项目 ID、绝对路径都被拒绝。
+
+### Day 4–5：受控编排器
+
+- [ ] 定义固定步骤和状态：`scanning`、`indexing`、`retrieving`、`evaluating`、`drafting`、`waiting_confirmation`、`completed`、`failed`。
+- [ ] 编排器只调用已注册的队友工具，不让模型任意选择 Python/Shell 函数。
+- [ ] 先运行规则层，再让模型解释；缺证据统一输出 `needs_confirmation`。
+- [ ] 保存 run 状态和 JSONL 审计日志。
+
+**当天验收**：给定 fake 工具结果，可稳定跑出完整状态流；重复步骤、未知工具、超过 8 步均会失败并记录原因。
+
+## 2.3 你与队友的接口约定
+
+你向队友提供：
+
+```python
+project_root(project_id) -> Path
+llm_client.generate_json(schema, prompt) -> BaseModel
+run_context(run_id, project_id) -> RunContext
+audit_event(run_id, event, payload) -> None
+```
+
+队友向你提供：
+
+```python
+scan_project(project_id) -> ScanResult
+index_project(project_id) -> IndexResult
+retrieve(project_id, query) -> list[Evidence]
+load_tasks(project_id) -> list[Task]
+evaluate_tasks(tasks, evidence) -> list[TaskEvaluation]
+render_reports(evaluations) -> ReportDraft
+```
+
+接口先以 Pydantic Schema 固定；内部实现可以迭代，但不能让双方依赖未约定的字典字段。
+
 ## 3. 阶段任务
 
 ### 阶段 A：项目基础与契约（优先完成）
