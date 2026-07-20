@@ -1,2 +1,10 @@
 __pycache__/
 *.py[cod]
+.env
+.venv/
+*.egg-info/
+data/
+outputs/
+logs/
+models/
+*.gguf
