@@ -1,26 +1,22 @@
 #!/usr/bin/env python3
-"""Validate the official Radeon Hackathon pull-request title format."""
+"""Validate the fixed official submission identity in PR titles."""
 
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 
 
-TITLE_PATTERN = re.compile(
-    r"^Track (?P<track>[123]), (?P<team>[^,\s](?:[^,]*[^,\s])?), (?P<app>[^,\s](?:[^,]*[^,\s])?)$"
-)
+OFFICIAL_PR_TITLE = "Track 2, PLASMA, ProjectPack Office Agent"
 
 
 def validate_title(title: str) -> str | None:
     """Return an error message, or ``None`` when *title* is valid."""
     if "\n" in title or "\r" in title:
         return "title must be a single line"
-    if not TITLE_PATTERN.fullmatch(title):
+    if title != OFFICIAL_PR_TITLE:
         return (
-            "expected exactly: 'Track <1|2|3>, <Team name>, <Application name>'; "
-            "use English text and a single comma plus space between fields"
+            f"expected exactly: '{OFFICIAL_PR_TITLE}'"
         )
     return None
 

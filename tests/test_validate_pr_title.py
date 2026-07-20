@@ -2,19 +2,22 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from scripts.validate_pr_title import validate_title
+from scripts.validate_pr_title import OFFICIAL_PR_TITLE, validate_title
 from scripts.validate_specs import check_spec
 
 
 class ValidatePrTitleTests(unittest.TestCase):
-    def test_accepts_official_track_title(self) -> None:
-        self.assertIsNone(validate_title("Track 2, IronClaw Team, ProjectPack Office Agent"))
+    def test_accepts_fixed_official_title(self) -> None:
+        self.assertIsNone(validate_title(OFFICIAL_PR_TITLE))
 
     def test_rejects_non_official_title(self) -> None:
         self.assertIsNotNone(validate_title("feat: add agent"))
 
     def test_rejects_empty_required_field(self) -> None:
         self.assertIsNotNone(validate_title("Track 2, , ProjectPack Office Agent"))
+
+    def test_rejects_other_track_team_or_application(self) -> None:
+        self.assertIsNotNone(validate_title("Track 2, Other Team, ProjectPack Office Agent"))
 
 
 class ValidateSpecsTests(unittest.TestCase):

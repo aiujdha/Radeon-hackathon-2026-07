@@ -13,16 +13,10 @@ Do not use vague messages such as `update`, `fix`, or `wip`.
 
 ## Pull requests and official submission
 
-Every pull request in this competition repository must use the official English title:
+Every pull request in this competition repository must use this fixed official English title:
 
 ```text
-Track <1|2|3>, <Team name>, <Application name>
-```
-
-Example:
-
-```text
-Track 2, IronClaw Team, ProjectPack Office Agent
+Track 2, PLASMA, ProjectPack Office Agent
 ```
 
 This title is for the PR. Keep individual Git commits in Conventional Commits format.
@@ -47,7 +41,7 @@ py -m unittest discover -s tests -p 'test_*.py'
 For a title check, run:
 
 ```powershell
-py scripts/validate_pr_title.py --title 'Track 2, IronClaw Team, ProjectPack Office Agent'
+py scripts/validate_pr_title.py --title 'Track 2, PLASMA, ProjectPack Office Agent'
 ```
 
 Do not commit model files, SSH private keys, credentials, or personal file-system paths.
