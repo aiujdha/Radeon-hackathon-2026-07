@@ -1,7 +1,7 @@
 # Core Contracts and Project API — Technical Record
 
 - Level: S2
-- Status: implemented
+- Status: verified
 
 ## Components
 

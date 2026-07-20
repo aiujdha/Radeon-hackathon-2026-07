@@ -8,14 +8,20 @@ py scripts/validate_specs.py --strict
 git diff --check
 ```
 
-## Cloud verification plan
+## Cloud verification
 
-1. Deploy this branch into `/workspace/office-agent`.
-2. Start the API on loopback port 9000 while llama-server is on port 8000.
-3. Create and retrieve an isolated project through the API.
-4. Invoke normal and JSON-validated model generations through `LLMClient`.
-5. Record response status and payload shape below after execution.
+- Deployed branch: `feat/core-contracts` in `/workspace/office-agent`.
+- API health: `GET /health` returned `status: ok`; the local llama-server was
+  reachable.
+- `POST /api/projects` for `cloud-contracts-1120` returned 201.
+- `GET /api/projects/cloud-contracts-1120` returned 200 and contained the
+  stored public metadata without an absolute host path.
+- `LLMClient.generate_text()` returned exactly `CONTRACTS_READY`.
+- `LLMClient.generate_json()` parsed the real model response as
+  `{"answer":"cloud_verified"}`.
 
 ## Result
 
-- Pending implementation and cloud execution.
+- Local test suite: 20 passed.
+- Specification and whitespace validation passed.
+- Cloud API and model integration passed on the active AMD instance.
