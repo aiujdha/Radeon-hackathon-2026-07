@@ -206,7 +206,7 @@ def verify_import():
     from app.rag.manifest import compute_sha256
 
     base_dir = PROJECT_ROOT
-    project_id = "demo_project"
+    project_id = "demo-project"
 
     print("\n" + "=" * 60)
     print("Step 2: Running import_project()")
@@ -246,11 +246,11 @@ def verify_import():
     for sf in skipped_files:
         print(f"    [{sf.format:5s}] {sf.relative_path}")
 
-    ok_sha = all(len(sf.sha256) == 64 for sf in result.files if sf.parse_status != "unsupported")
-    ok_size = all(sf.size_bytes > 0 for sf in result.files if sf.parse_status != "unsupported")
+    ok_sha = all(sf.sha256 is not None and len(sf.sha256) == 64 for sf in success_files)
+    ok_size = all(sf.size_bytes is not None and sf.size_bytes > 0 for sf in success_files)
 
-    all_checks.append(("AC-1a", "All files have valid SHA-256 (64 hex chars)", ok_sha))
-    all_checks.append(("AC-1b", "All files have positive file size", ok_size))
+    all_checks.append(("AC-1a", "All safely imported files have valid SHA-256 (64 hex chars)", ok_sha))
+    all_checks.append(("AC-1b", "All safely imported files have positive file size", ok_size))
     all_checks.append(("AC-1c", ">= 5 files imported successfully", result.success_count >= 5))
     all_checks.append(("AC-1d", ">= 1 file failed (corrupt.txt)", result.failure_count >= 1))
 
@@ -389,9 +389,16 @@ def verify_import():
     if symlink_path.exists():
         project_dir = (base_dir / f"data/projects/{project_id}").resolve()
         is_safe = is_path_safe(project_dir, symlink_path)
-        in_result = any("escape_link" in sf.relative_path for sf in result.files)
-        print(f"  is_path_safe: {is_safe}, in import result: {in_result}")
-        all_checks.append(("AC-9", "Symlink escape rejected", not is_safe and not in_result))
+        rejected = next((sf for sf in result.files if "escape_link" in sf.relative_path), None)
+        print(f"  is_path_safe: {is_safe}, rejected record: {rejected is not None}")
+        all_checks.append((
+            "AC-9",
+            "Symlink escape is rejected and recorded",
+            not is_safe
+            and rejected is not None
+            and rejected.parse_status == "failed"
+            and rejected.error_message == "symlink escape detected",
+        ))
     else:
         # Also test the function directly
         outside = base_dir / "escape_target.txt"
@@ -463,7 +470,7 @@ def verify_import():
 
 def main():
     base_dir = PROJECT_ROOT
-    project_id = "demo_project"
+    project_id = "demo-project"
 
     # Clean up previous demo data
     import shutil
