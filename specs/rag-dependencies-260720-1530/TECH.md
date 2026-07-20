@@ -1,7 +1,7 @@
 # Phase A Reproducible Parser Dependencies — Technical Record
 
 - Level: S2
-- Status: implemented
+- Status: verified
 
 ## Change
 
