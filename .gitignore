@@ -3,3 +3,8 @@ __pycache__/
 .env
 .venv/
 *.egg-info/
+data/
+outputs/
+logs/
+models/
+*.gguf
