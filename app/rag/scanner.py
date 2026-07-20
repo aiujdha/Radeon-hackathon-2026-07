@@ -1,10 +1,12 @@
-"""Source directory scanner with security validation (Phase A).
+"""Controlled source-directory scanning for Phase A document imports."""
 
-Scans `data/projects/<project_id>/source/` for supported file formats,
-validates each path against symlink-escape and path-traversal attacks.
-"""
+from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
+
+from app.security.paths import ensure_project_path, validate_project_id
+
 
 SUPPORTED_EXTENSIONS: dict[str, str] = {
     ".md": "md",
@@ -16,109 +18,80 @@ SUPPORTED_EXTENSIONS: dict[str, str] = {
 }
 
 
+@dataclass(frozen=True, slots=True)
+class ScannedSourceEntry:
+    full_path: Path
+    relative_path: str
+    format: str
+    error_message: str | None = None
+
+
 def is_path_safe(project_dir: Path, candidate: Path) -> bool:
-    """Check that `candidate` does not escape `project_dir` via symlinks.
-
-    Resolves both paths to their real locations and verifies that
-    `candidate` is within or equal to `project_dir`.
-
-    Args:
-        project_dir: The project root directory.
-        candidate: A file or directory path to validate.
-
-    Returns:
-        True if the resolved candidate is under the resolved project dir.
-    """
+    """Return whether a resolved candidate remains within a resolved project."""
     try:
-        resolved_candidate = candidate.resolve()
-        resolved_project = project_dir.resolve()
-    except (OSError, RuntimeError):
+        candidate.resolve().relative_to(project_dir.resolve())
+    except (OSError, RuntimeError, ValueError):
         return False
-
-    try:
-        # Python 3.9+ is_relative_to
-        return resolved_candidate.is_relative_to(resolved_project)
-    except AttributeError:
-        # Fallback for older Python — check common prefix
-        try:
-            resolved_candidate.relative_to(resolved_project)
-            return True
-        except ValueError:
-            return False
+    return True
 
 
 def _detect_format(file_path: Path) -> str:
-    """Detect file format from extension.
-
-    Args:
-        file_path: Path to the file.
-
-    Returns:
-        Format string (e.g. "md") or "unsupported".
-    """
-    suffix = file_path.suffix.lower()
-    return SUPPORTED_EXTENSIONS.get(suffix, "unsupported")
+    return SUPPORTED_EXTENSIONS.get(file_path.suffix.lower(), "unsupported")
 
 
-def _contains_dotdot(path_str: str) -> bool:
-    """Check if a path string contains `..` components."""
-    return ".." in Path(path_str).parts
+def _project_root(*, base_dir: Path | None, project_root: Path | None) -> Path:
+    if project_root is not None:
+        return project_root
+    return (base_dir or Path.cwd()) / "data" / "projects"
 
 
-def scan_source_dir(project_id: str, *, base_dir: Path | None = None) -> list[tuple[Path, str, str]]:
-    """Scan a project's source directory for importable files.
-
-    Walks `data/projects/<project_id>/source/` relative to `base_dir`
-    (default: current working directory), collects regular files, and
-    validates each for safety.
-
-    Args:
-        project_id: Project identifier.
-        base_dir: Root directory containing `data/`.  Defaults to `Path.cwd()`.
-
-    Returns:
-        A list of `(full_path, relative_path, format)` tuples for valid files.
-        Unsafe or unsupported files are silently excluded here; the caller
-        should record them as needed.
-
-    Raises:
-        FileNotFoundError: If the source directory does not exist.
-        NotADirectoryError: If the source path is not a directory.
-    """
-    if base_dir is None:
-        base_dir = Path.cwd()
-
-    project_dir = base_dir / "data" / "projects" / project_id
-    source_dir = project_dir / "source"
+def scan_source_entries(
+    project_id: str,
+    *,
+    base_dir: Path | None = None,
+    project_root: Path | None = None,
+) -> list[ScannedSourceEntry]:
+    """Scan all source files and retain unsafe/unsupported outcomes for audit."""
+    project_id = validate_project_id(project_id)
+    root = _project_root(base_dir=base_dir, project_root=project_root)
+    project_dir = ensure_project_path(root, project_id)
+    source_dir = ensure_project_path(root, project_id, "source")
 
     if not source_dir.exists():
         raise FileNotFoundError(f"Source directory not found: {source_dir}")
     if not source_dir.is_dir():
         raise NotADirectoryError(f"Not a directory: {source_dir}")
 
-    results: list[tuple[Path, str, str]] = []
-
+    results: list[ScannedSourceEntry] = []
     for entry in source_dir.rglob("*"):
-        # Skip directories and non-files
-        if not entry.is_file():
+        if entry.is_dir():
             continue
-
-        # Reject path with .. components
         try:
-            rel = entry.relative_to(project_dir)
+            relative_path = str(entry.relative_to(project_dir)).replace("\\", "/")
         except ValueError:
-            continue
-        if _contains_dotdot(str(rel)):
-            continue
-
-        # Security: reject symlink escapes
-        if not is_path_safe(project_dir, entry):
             continue
 
         fmt = _detect_format(entry)
-        if fmt == "unsupported":
-            continue
-
-        results.append((entry, str(rel).replace("\\", "/"), fmt))
-
+        if entry.is_symlink() and not is_path_safe(project_dir, entry):
+            results.append(
+                ScannedSourceEntry(entry, relative_path, fmt, "symlink escape detected")
+            )
+        elif entry.is_file():
+            results.append(ScannedSourceEntry(entry, relative_path, fmt))
+        elif entry.is_symlink():
+            results.append(ScannedSourceEntry(entry, relative_path, fmt, "broken symlink detected"))
     return results
+
+
+def scan_source_dir(
+    project_id: str,
+    *,
+    base_dir: Path | None = None,
+    project_root: Path | None = None,
+) -> list[tuple[Path, str, str]]:
+    """Return only safe, supported files for compatibility with existing callers."""
+    return [
+        (entry.full_path, entry.relative_path, entry.format)
+        for entry in scan_source_entries(project_id, base_dir=base_dir, project_root=project_root)
+        if entry.error_message is None and entry.format != "unsupported"
+    ]

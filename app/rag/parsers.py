@@ -15,6 +15,7 @@ from app.rag.manifest import (
     SourceFile,
     ImportResult,
     build_source_file,
+    build_rejected_source_file,
 )
 
 
@@ -417,7 +418,12 @@ def parse_file(file_path: Path, fmt: str) -> ParsedDocument:
 # ---------------------------------------------------------------------------
 
 
-def import_project(project_id: str, *, base_dir: Path | None = None) -> ImportResult:
+def import_project(
+    project_id: str,
+    *,
+    base_dir: Path | None = None,
+    project_root: Path | None = None,
+) -> ImportResult:
     """Run the full Phase A import pipeline for a project.
 
     1. Scan ``data/projects/<project_id>/source/``.
@@ -432,12 +438,12 @@ def import_project(project_id: str, *, base_dir: Path | None = None) -> ImportRe
     Returns:
         ImportResult with all file records and successfully parsed documents.
     """
-    from app.rag.scanner import scan_source_dir
+    from app.rag.scanner import scan_source_entries
 
     base = base_dir or Path.cwd()
 
     try:
-        scanned = scan_source_dir(project_id, base_dir=base)
+        scanned = scan_source_entries(project_id, base_dir=base, project_root=project_root)
     except FileNotFoundError:
         return ImportResult(
             project_id=project_id,
@@ -453,7 +459,13 @@ def import_project(project_id: str, *, base_dir: Path | None = None) -> ImportRe
     failure_count = 0
     skipped_count = 0
 
-    for full_path, rel_path, fmt in scanned:
+    for entry in scanned:
+        full_path, rel_path, fmt = entry.full_path, entry.relative_path, entry.format
+        if entry.error_message:
+            files.append(build_rejected_source_file(full_path, rel_path, fmt, entry.error_message))
+            failure_count += 1
+            continue
+
         sf = build_source_file(full_path, rel_path, fmt)
         if fmt == "unsupported":
             sf.parse_status = "unsupported"

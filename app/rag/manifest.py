@@ -10,9 +10,9 @@ class SourceFile(BaseModel):
 
     relative_path: str
     format: str = Field(description="md|txt|pdf|docx|xlsx|unsupported")
-    sha256: str = Field(description="Hex-encoded SHA-256 digest")
-    size_bytes: int = Field(ge=0, description="File size in bytes")
-    modified_time: float = Field(description="POSIX timestamp of last modification")
+    sha256: str | None = Field(default=None, description="Hex-encoded SHA-256 digest when safe to read")
+    size_bytes: int | None = Field(default=None, ge=0, description="File size in bytes when available")
+    modified_time: float | None = Field(default=None, description="POSIX timestamp when available")
     parse_status: str = Field(default="pending", description="pending|success|failed|unsupported")
     error_message: str | None = Field(default=None, description="Error detail when failed")
 
@@ -110,4 +110,29 @@ def build_source_file(
         size_bytes=stat.st_size,
         modified_time=stat.st_mtime,
         parse_status="pending" if fmt != "unsupported" else "unsupported",
+    )
+
+
+def build_rejected_source_file(
+    full_path: Path,
+    relative_path: str,
+    fmt: str,
+    error_message: str,
+) -> SourceFile:
+    """Record an unsafe path without opening or hashing its target."""
+    try:
+        stat = full_path.lstat()
+        size_bytes: int | None = stat.st_size
+        modified_time: float | None = stat.st_mtime
+    except OSError:
+        size_bytes = None
+        modified_time = None
+    return SourceFile(
+        relative_path=relative_path,
+        format=fmt,
+        sha256=None,
+        size_bytes=size_bytes,
+        modified_time=modified_time,
+        parse_status="failed",
+        error_message=error_message,
     )

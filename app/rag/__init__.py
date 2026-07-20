@@ -7,8 +7,9 @@ from app.rag.manifest import (
     ImportResult,
     compute_sha256,
     build_source_file,
+    build_rejected_source_file,
 )
-from app.rag.scanner import scan_source_dir, is_path_safe
+from app.rag.scanner import ScannedSourceEntry, scan_source_dir, scan_source_entries, is_path_safe
 from app.rag.parsers import (
     parse_file,
     parse_markdown,
@@ -27,8 +28,11 @@ __all__ = [
     "ImportResult",
     "compute_sha256",
     "build_source_file",
+    "build_rejected_source_file",
     # scanner
     "scan_source_dir",
+    "scan_source_entries",
+    "ScannedSourceEntry",
     "is_path_safe",
     # parsers
     "parse_file",

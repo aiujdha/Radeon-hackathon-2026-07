@@ -9,7 +9,7 @@ from app.rag.manifest import (
     compute_sha256,
     build_source_file,
 )
-from app.rag.scanner import scan_source_dir, is_path_safe, SUPPORTED_EXTENSIONS
+from app.rag.scanner import scan_source_dir, scan_source_entries, is_path_safe, SUPPORTED_EXTENSIONS
 from app.rag.parsers import (
     parse_markdown,
     parse_txt,
@@ -194,6 +194,22 @@ class TestScanSourceDir:
         with pytest.raises(FileNotFoundError):
             scan_source_dir("noexist", base_dir=tmp_path)
 
+    def test_rejects_project_id_path_traversal(self, tmp_path: Path):
+        outside = tmp_path / "outside" / "source"
+        outside.mkdir(parents=True)
+        (outside / "secret.md").write_text("# private", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="project_id"):
+            scan_source_dir("../../outside", base_dir=tmp_path)
+
+    def test_detailed_scan_records_unsupported_file(self, tmp_path: Path):
+        _make_project("p-audit", {"known.md": "# known", "unknown.json": "{}"}, base_dir=tmp_path)
+        results = scan_source_entries("p-audit", base_dir=tmp_path)
+
+        unsupported = next(entry for entry in results if entry.relative_path == "source/unknown.json")
+        assert unsupported.format == "unsupported"
+        assert unsupported.error_message is None
+
     def test_nested_directories(self, tmp_path: Path):
         _make_project("p2", {
             "a/one.md": "# One",
@@ -366,14 +382,20 @@ class TestImportProject:
         }, base_dir=tmp_path)
         result = import_project("p-int", base_dir=tmp_path)
         assert result.project_id == "p-int"
-        assert result.total_files == 2  # bin excluded by scanner
+        assert result.total_files == 3
         assert result.success_count == 2
         assert result.failure_count == 0
-        assert result.skipped_count == 0
+        assert result.skipped_count == 1
         assert len(result.parsed) == 2
-        assert len(result.files) == 2
+        assert len(result.files) == 3
+
+        unsupported = next(sf for sf in result.files if sf.relative_path == "source/ignore.bin")
+        assert unsupported.parse_status == "unsupported"
+        assert unsupported.error_message is None
 
         for sf in result.files:
+            if sf.parse_status == "unsupported":
+                continue
             assert sf.parse_status == "success"
             assert sf.sha256 is not None
             assert len(sf.sha256) == 64
@@ -434,3 +456,21 @@ class TestImportProject:
         assert sf.size_bytes > 0
         assert sf.modified_time > 0
         assert sf.error_message is None
+
+    def test_symlink_escape_is_recorded_without_hashing_target(self, tmp_path: Path):
+        source_dir = _make_project("p-link", {}, base_dir=tmp_path)
+        outside = tmp_path / "outside.md"
+        outside.write_text("# secret", encoding="utf-8")
+        symlink = source_dir / "escape.md"
+        try:
+            symlink.symlink_to(outside)
+        except OSError:
+            pytest.skip("Symlink creation requires elevated privileges on this OS")
+
+        result = import_project("p-link", base_dir=tmp_path)
+        assert result.total_files == 1
+        assert result.failure_count == 1
+        rejected = result.files[0]
+        assert rejected.parse_status == "failed"
+        assert rejected.error_message == "symlink escape detected"
+        assert rejected.sha256 is None
