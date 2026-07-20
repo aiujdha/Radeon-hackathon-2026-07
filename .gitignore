@@ -3,6 +3,7 @@ __pycache__/
 .env
 .venv/
 *.egg-info/
+projectpack_office_agent.egg-info/
 data/
 outputs/
 logs/
