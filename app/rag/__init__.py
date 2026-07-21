@@ -1,4 +1,4 @@
-"""RAG pipeline — document import and parsing (Phase A)."""
+"""RAG pipeline — document import, chunking, indexing, and retrieval."""
 
 from app.rag.manifest import (
     SourceFile,
@@ -19,6 +19,16 @@ from app.rag.parsers import (
     parse_xlsx,
     import_project,
 )
+from app.rag.chunker import split_document
+from app.rag.embedder import HashEmbedder, LLMEmbedder, create_embedder
+from app.rag.indexer import ProjectIndex
+from app.rag.qa_service import (
+    NO_EVIDENCE_MSG,
+    QABenchmark,
+    QAResult,
+    QAService,
+)
+from app.rag.retriever import Retriever
 
 __all__ = [
     # manifest
@@ -42,4 +52,19 @@ __all__ = [
     "parse_docx",
     "parse_xlsx",
     "import_project",
+    # chunker (Phase B)
+    "split_document",
+    # embedder (Phase B)
+    "HashEmbedder",
+    "LLMEmbedder",
+    "create_embedder",
+    # indexer (Phase B)
+    "ProjectIndex",
+    # retriever (Phase B)
+    "Retriever",
+    # QA service (Phase B)
+    "NO_EVIDENCE_MSG",
+    "QABenchmark",
+    "QAResult",
+    "QAService",
 ]
