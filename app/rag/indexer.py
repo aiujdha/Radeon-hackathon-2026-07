@@ -20,6 +20,7 @@ from app.config import Settings
 from app.rag.chunker import split_document
 from app.rag.embedder import create_embedder
 from app.rag.manifest import ContentChunk, ParsedDocument
+from app.security.paths import ensure_project_path, validate_project_id
 
 
 def _chinese_tokenize(text: str) -> list[str]:
@@ -64,7 +65,7 @@ class ProjectIndex:
         mock_embed_dim: int | None = None,
         embedder=None,
     ):
-        self._project_id = project_id
+        self._project_id = validate_project_id(project_id)
         self._settings = settings or Settings()
 
         self.chunks: list[ContentChunk] = []
@@ -78,7 +79,7 @@ class ProjectIndex:
         self._embedder = embedder or create_embedder(mock_dim=mock_embed_dim)
 
         # Storage directory
-        self._dir = self._settings.vector_db_root / project_id
+        self._dir = ensure_project_path(self._settings.vector_db_root, self._project_id)
 
     # ── public API ─────────────────────────────────────────────────
 

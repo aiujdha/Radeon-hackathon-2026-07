@@ -139,7 +139,7 @@ class QAService:
         retriever: Retriever,
         *,
         use_llm: bool = False,
-        score_threshold: float = 0.0,
+        score_threshold: float = 0.35,
         bm25_only: bool = False,
     ):
         self._retriever = retriever
@@ -150,12 +150,8 @@ class QAService:
     def ask(self, question: str) -> QAResult:
         """Answer a single question, returning a QAResult."""
         evidence = self._retriever.search(
-            question, top_k=5, bm25_only=self._bm25_only
+            question, top_k=5, min_score=self._score_threshold, bm25_only=self._bm25_only
         )
-
-        # Score-threshold filtering
-        if self._score_threshold > 0.0:
-            evidence = [e for e in evidence if e.score >= self._score_threshold]
 
         if not evidence:
             return QAResult(

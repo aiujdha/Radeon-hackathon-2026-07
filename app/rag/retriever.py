@@ -27,7 +27,7 @@ class Retriever:
         self,
         query: str,
         top_k: int = 5,
-        min_score: float = 0.0,
+        min_score: float = 0.35,
         bm25_only: bool = False,
     ) -> list[Evidence]:
         """Return top‑k evidence items using hybrid recall + RRF.
@@ -66,13 +66,16 @@ class Retriever:
         faiss_hits = self._index.faiss_search(query, k=top_k * 3)
         bm25_hits = self._index.bm25_search(query, k=top_k * 3)
 
+        # Dense search always returns neighbours.  With no lexical evidence,
+        # require a meaningful raw cosine score before treating them as proof.
+        best_dense_score = max((score for _, score in faiss_hits), default=0.0)
+        if not bm25_hits and best_dense_score < min_score:
+            return []
+
         # RRF merge
         merged = self._rrf_merge(faiss_hits, bm25_hits, k=top_k)
 
         # Score‑threshold filtering
-        if min_score > 0.0:
-            merged = [(idx, s) for idx, s in merged if s >= min_score]
-
         # Build Evidence list
         evidence_list: list[Evidence] = []
         for chunk_idx, score in merged:
