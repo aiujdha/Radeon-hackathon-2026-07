@@ -1,72 +1,158 @@
-# Radeon-hackathon-2026-07
+# ProjectPack Office Agent
 
-## how to apply and use AMD Radeon GPU
-see [README](https://github.com/AMD-DEV-CONTEST/Radeon-hackathon-2026-07/blob/main/Radeon-Cloud-User%20Guide/README.md)
+ProjectPack Office Agent is a private, evidence-driven office assistant for
+project teams. It imports project reference files and a task list, retrieves
+project-scoped evidence, evaluates task progress with rules plus a local LLM,
+and generates an auditable report bundle.
 
-## when you submit
-**pls fork this repo and open a pull request including the stuff that is mentioned in Rules&conditions of luma page. the title of pull request should be like "Track x, Team name, your application name"**
+## MVP capabilities
 
-> [!NOTE]
-> All submission materials, project descriptions, and Pull Requests should be submitted in English.
+```text
+Reference files + task CSV/XLSX
+        -> safe import and parsing
+        -> FAISS + BM25 retrieval
+        -> evidence-backed task evaluation
+        -> Markdown report + risk CSV + next-week plan
+```
 
-## Submission Requirements
+The fixed runner permits only this sequence: scan, index, retrieve, evaluate,
+and draft. The model does not receive shell or arbitrary filesystem access.
 
-### Track 1: Development of Multimodal Content Creation Tools
+## Architecture
 
-1. **Project Profile Document (PDF)**
-   - Project background
-   - Target users & application scenarios
-   - System architecture
-   - Model & algorithm introduction
-   - Adaptation description for AMD Radeon GPU / ROCm
-2. **Project Source Code**
-   - Complete source code repository
-   - README file including environment configuration, startup guide and dependency list
-3. **Demo Video**
-   - Recommended duration: 3–5 minutes
-   - Demonstrate the actual operation process
-   - The actual execution performance on an AMD Radeon GPU, from command line/GUI to the final result (clarity, stability and diversity of outputs)
-4. **Supplementary Materials (Choose One)**
-   - PPT / Poster (highlight creative scenarios, practical value of the tool)
+```text
+Gradio workbench --HTTP--> FastAPI API --controlled runner--> RAG / Phase C
+       |                         |                                  |
+       |                         +--> project-scoped uploads          +--> local llama-server
+       |                                                                  chat :8000/v1
+       +--> report downloads                                               embeddings :8080/v1
+```
 
-### Track 2: Development & Local Deployment of Private AI Agents
+## Prerequisites
 
-1. **Project Specification Document**
-   - Application scenarios
-   - Agent architecture diagram
-   - Introduction to core capabilities
-   - Model introduction & local deployment plan
-   - Optimization description for inference speed on AMD Radeon GPU
-2. **Project Source Code**
-   - Complete source code repository
-   - README file including environment configuration, startup guide and dependency list
-3. **Demo Video**
-   - Recommended duration: 3–5 minutes
-   - Demonstrate the actual operation process
-   - The actual execution performance on an AMD Radeon GPU, from command line/GUI to the final result (fluidity and functional completeness)
-4. **Supplementary Materials (Choose One)**
-   - PPT / Poster
+- Python 3.12 or newer.
+- A llama.cpp build with ROCm/HIP support for AMD Radeon GPUs.
+- A local GGUF chat model. This project was verified with
+  `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf`.
 
-### Track 3: Physical AI Challenge – Robotics Simulation and Application Design based on AMD Radeon GPUs and ROCm
+Create an environment and install the project:
 
-1. **Technical Report** (should include, but is not limited to):
-   - Definition and description of the target application
-   - Overall system architecture and solution design
-   - Description of the datasets used for training and/or evaluation
-   - Explanation of how AMD Radeon GPUs are utilized during training, inference, and other relevant stages
-   - Description of the innovations, key technical contributions, and important aspects of the project
-   - Description of the final deliverables and output forms of the project
-   - Any additional information that participants believe highlights the strengths or unique aspects of their work
-   - Introduction of team members and their respective contributions
-2. **Project Source Code**
-   - Dedicated source code repositories
-   - A Docker image containing the complete source code and all required components for running the project would be preferable
-3. **Reproducibility Instruction README** — a detailed README document containing:
-   - Environment setup instructions
-   - Execution and usage instructions
-   - Dependency specifications
-   - Step-by-step reproduction procedures
-   - Following the provided instructions should allow evaluators to reproduce the submitted results
-4. **Demonstration Video** (Recommended Length 3~5 minutes)
-   - The video should demonstrate the complete workflow of the project, including command-line and/or GUI operations, execution procedures, and results
-5. **Supplementary materials** in other formats may be submitted to demonstrate the value of the proposed technical solution.
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows PowerShell: .\.venv\Scripts\Activate.ps1
+python -m pip install -e '.[dev]'
+cp .env.example .env       # Windows PowerShell: Copy-Item .env.example .env
+```
+
+Edit `.env` only when your paths or endpoint ports differ. Never commit it.
+
+## Start local model services
+
+Run the chat endpoint and embeddings endpoint in separate terminals. Replace
+the binary and model paths with those on your cloud instance.
+
+```bash
+# Chat endpoint
+/workspace/runtime/llama.cpp/build/bin/llama-server \
+  --model /workspace/models/qwen3.6/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf \
+  --alias qwen3.6-office-agent --host 127.0.0.1 --port 8000 \
+  --n-gpu-layers 999 --ctx-size 32768 --jinja
+```
+
+```bash
+# Embeddings endpoint (MVP verification configuration)
+/workspace/runtime/llama.cpp/build/bin/llama-server \
+  --model /workspace/models/qwen3.6/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf \
+  --host 127.0.0.1 --port 8080 --n-gpu-layers 999 \
+  --ctx-size 4096 --embeddings --pooling mean
+```
+
+Verify both endpoints:
+
+```bash
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8080/health
+curl http://127.0.0.1:8000/v1/models
+```
+
+> The MVP verification configuration loads the same model twice, so it is
+> GPU-memory intensive. Production should use a smaller dedicated embedding
+> model or a shared-service deployment.
+
+## Start the application
+
+Terminal 1 starts the API:
+
+```bash
+python scripts/start_api.py
+```
+
+Terminal 2 starts the workbench:
+
+```bash
+python scripts/start_workbench.py --host 0.0.0.0 --port 7860
+```
+
+Open `http://127.0.0.1:7860` locally. When using SSH port forwarding, forward
+port 7860 and open that same local address in the browser.
+
+## MVP demo flow
+
+1. Open the workbench and create project ID `demo-project`.
+2. Upload [demo/status.md](demo/status.md) as a reference file.
+3. Upload [demo/tasks.csv](demo/tasks.csv) as the task list.
+4. Select **Generate project report**.
+5. Inspect the JSON task result. It includes task status, explanation, and the
+   `status.md` evidence citation.
+6. Download the generated Markdown report, risk CSV, and next-week plan.
+
+Outputs are scoped to one project and run:
+
+```text
+outputs/<project_id>/reports/<run_id>.md
+outputs/<project_id>/risks/<run_id>.csv
+outputs/<project_id>/plans/<run_id>.md
+outputs/<project_id>/results/<run_id>.json
+```
+
+The original task list is never modified.
+
+## Tests and cloud verification
+
+Run local checks:
+
+```bash
+python -m pytest -q
+python scripts/validate_specs.py
+```
+
+With both local model services running on the cloud instance, run the real
+end-to-end verifier:
+
+```bash
+python scripts/verify_end_to_end_rag_report_cloud.py
+```
+
+It creates a timestamped smoke-test project and verifies the live chat model,
+embedding retrieval, source citation, report, risk CSV, next-week plan, and
+structured result artifact. It does not overwrite an existing project.
+
+## AMD Radeon / ROCm notes
+
+- Inference uses `llama.cpp` with ROCm/HIP and `--n-gpu-layers 999`.
+- Monitor utilisation and VRAM percentage with `rocm-smi`.
+- Keep chat and embedding endpoint URLs separate in `.env`.
+- Record GPU model, ROCm version, context size, VRAM use, and token throughput
+  during the final demonstration.
+
+## Development and governance
+
+- Create a feature branch from current `main`; do not push directly to `main`.
+- Add an S1/S2/S3 specification under `specs/` before implementation as
+  required by the repository workflow.
+- Run tests and specification validation before opening a PR.
+- The official PR title is exactly:
+
+  ```text
+  Track 2, PLASMA, ProjectPack Office Agent
+  ```
