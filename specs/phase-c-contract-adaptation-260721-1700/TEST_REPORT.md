@@ -14,3 +14,4 @@ py scripts/validate_specs.py
 - Phase C and adapter regression: `84 passed`
 - Full repository regression: `145 passed, 6 skipped`
 - Specification validation: `spec validation: checked errors=0`
+- Cloud smoke test: pending

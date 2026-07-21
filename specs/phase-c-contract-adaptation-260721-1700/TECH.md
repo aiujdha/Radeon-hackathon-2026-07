@@ -22,3 +22,6 @@
 
 - Test project-scoped loading, traversal rejection, public-schema evaluation,
   and evidence-linked report drafting.
+- Use `scripts/verify_phase_c_cloud.py` for a non-destructive cloud smoke test
+  with the real chat model. The script creates a timestamped test project and
+  never overwrites an existing project or task file.
