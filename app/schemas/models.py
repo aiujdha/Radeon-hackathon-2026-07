@@ -79,6 +79,9 @@ class TaskEvaluation(BaseModel):
     explanation: str = Field(min_length=1, max_length=4000)
     evidence: list[Evidence] = Field(default_factory=list)
     missing_evidence: list[str] = Field(default_factory=list)
+    risk_level: str = Field(default="low", pattern="^(low|medium|high)$")
+    risk_reason: str = Field(default="", max_length=4000)
+    recommendation: str = Field(default="", max_length=4000)
 
 
 class RunState(BaseModel):

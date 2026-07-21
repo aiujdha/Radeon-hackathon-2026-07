@@ -4,12 +4,20 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Awaitable
+from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
 from app.config import Settings
 from app.llm.client import LLMClient
-from app.reports.generator import evaluate_with_llm, evaluate_with_rules
+from app.reports.generator import (
+    TaskEvaluation as InternalTaskEvaluation,
+    TaskStatus as InternalTaskStatus,
+    evaluate_with_llm,
+    evaluate_with_rules,
+    generate_next_week_plan,
+    generate_risk_csv,
+)
 from app.schemas import Evidence, ReportDraft, Task, TaskEvaluation, TaskStatus
 from app.security.paths import ensure_project_path, validate_project_id
 from app.tools.task_checker import _parse_date
@@ -17,6 +25,13 @@ from app.tools.task_reader import TaskRecord, read_tasks
 
 
 _DEFAULT_TASK_FILES = ("tasks.xlsx", "tasks.csv", "任务表.xlsx", "任务表.csv")
+
+
+@dataclass(frozen=True)
+class ReportBundle:
+    markdown: str
+    risk_csv: str
+    next_week_plan: str
 
 
 def load_tasks(
@@ -87,6 +102,24 @@ def render_reports(project_id: str, evaluations: list[TaskEvaluation]) -> Report
     return ReportDraft(project_id=project_id, markdown="\n".join(lines).strip() + "\n", evaluations=evaluations)
 
 
+def render_report_bundle(
+    project_id: str, tasks: list[Task], evaluations: list[TaskEvaluation]
+) -> ReportBundle:
+    """Render all Phase C artifacts from the same task evaluation result."""
+    project_id = validate_project_id(project_id)
+    tasks_by_id = {task.task_id: task for task in tasks}
+    internal = [
+        _to_internal_evaluation(tasks_by_id[evaluation.task_id], evaluation)
+        for evaluation in evaluations
+    ]
+    report = render_reports(project_id, evaluations)
+    return ReportBundle(
+        markdown=report.markdown,
+        risk_csv=generate_risk_csv(internal),
+        next_week_plan=generate_next_week_plan(internal, project_name=project_id),
+    )
+
+
 def _resolve_task_path(
     source_root: Path, project_root: Path, project_id: str, task_relative_path: str | None
 ) -> Path:
@@ -147,4 +180,19 @@ def _to_evaluation(task: Task, evidence: list[Evidence], internal: object) -> Ta
         explanation="\n".join(part for part in explanation_parts if part),
         evidence=evidence,
         missing_evidence=missing,
+        risk_level=internal.risk_level,
+        risk_reason=internal.risk_reason,
+        recommendation=internal.recommendation,
+    )
+
+
+def _to_internal_evaluation(task: Task, evaluation: TaskEvaluation) -> InternalTaskEvaluation:
+    return InternalTaskEvaluation(
+        task=_to_record(task),
+        status=InternalTaskStatus(evaluation.status.value),
+        evidence_summary=evaluation.explanation,
+        risk_level=evaluation.risk_level,
+        risk_reason=evaluation.risk_reason,
+        recommendation=evaluation.recommendation,
+        evidence_items=[item.excerpt for item in evaluation.evidence],
     )
