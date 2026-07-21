@@ -9,6 +9,7 @@ from app.schemas.models import (
     RunStatus,
     Task,
     TaskEvaluation,
+    TaskStatus,
 )
 
 __all__ = (
@@ -20,4 +21,5 @@ __all__ = (
     "RunStatus",
     "Task",
     "TaskEvaluation",
+    "TaskStatus",
 )
