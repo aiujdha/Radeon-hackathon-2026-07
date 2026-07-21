@@ -104,7 +104,7 @@ def create_embedder(
 
     settings = Settings()
     return LLMEmbedder(
-        base_url=base_url or settings.llm_base_url,
+        base_url=base_url or settings.embedding_base_url,
         model=model or settings.llm_model,
         timeout=timeout,
     )

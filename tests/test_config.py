@@ -10,12 +10,18 @@ def test_defaults_are_valid() -> None:
     settings = Settings(_env_file=None)
 
     assert str(settings.llm_base_url).rstrip("/").endswith("/v1")
+    assert str(settings.embedding_base_url).rstrip("/").endswith("/v1")
     assert settings.agent_max_steps == 8
 
 
 def test_rejects_invalid_api_port() -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, api_port=70000)
+
+
+def test_rejects_embedding_url_without_v1_suffix() -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, embedding_base_url="http://127.0.0.1:8080")
 
 
 def test_rejects_empty_model_name() -> None:
