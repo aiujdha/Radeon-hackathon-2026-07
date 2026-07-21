@@ -59,6 +59,9 @@ def test_controlled_run_executes_real_import_index_retrieval_and_report_locally(
     plan_path = settings.output_root / project.project_id / result.artifacts["next_week_plan"]
     assert plan_path.is_file()
     assert "草案" in plan_path.read_text(encoding="utf-8")
+    result_path = settings.output_root / project.project_id / result.artifacts["result"]
+    assert result_path.is_file()
+    assert "evaluations" in result_path.read_text(encoding="utf-8")
     audit = settings.log_root / "runs" / f"{queued.run_id}.jsonl"
     assert audit.is_file()
     assert '"event": "run_completed"' in audit.read_text(encoding="utf-8")

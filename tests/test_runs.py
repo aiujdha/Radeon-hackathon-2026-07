@@ -9,6 +9,7 @@ from app.config import Settings
 from app.observability.audit import AuditTrail
 from app.main import create_app
 from app.schemas import RunState, RunStatus
+from app.services.runs import save_run
 
 
 def _settings(tmp_path: Path) -> Settings:
@@ -54,6 +55,31 @@ def test_run_api_persists_a_project_scoped_queued_run(tmp_path: Path) -> None:
 
     persisted = list((settings.output_root / "demo-project" / "runs").glob("*.json"))
     assert len(persisted) == 1
+
+
+def test_run_artifacts_are_downloadable_only_by_known_names(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    app = create_app(settings)
+    with TestClient(app) as client:
+        assert client.post(
+            "/api/projects", json={"project_id": "demo-project", "name": "Demo"}
+        ).status_code == 201
+        created = client.post("/api/projects/demo-project/runs").json()
+        run_id = created["run_id"]
+        result_path = settings.output_root / "demo-project" / "results" / f"{run_id}.json"
+        result_path.parent.mkdir(parents=True)
+        result_path.write_text('{"evaluations": []}', encoding="utf-8")
+        save_run(
+            settings,
+            RunState.model_validate(
+                {**created, "artifacts": {"result": f"results/{run_id}.json"}}
+            ),
+        )
+
+        downloaded = client.get(f"/api/projects/demo-project/runs/{run_id}/artifacts/result")
+        assert downloaded.status_code == 200
+        assert downloaded.json() == {"evaluations": []}
+        assert client.get(f"/api/projects/demo-project/runs/{run_id}/artifacts/../../runs").status_code in {404, 422}
 
 
 def test_controlled_runner_uses_only_the_fixed_registered_pipeline(tmp_path: Path) -> None:

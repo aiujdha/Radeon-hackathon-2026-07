@@ -48,3 +48,17 @@ def get_project(project_root: Path, output_root: Path, project_id: str) -> Proje
         return Project.model_validate(json.loads(metadata_path.read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError, ValueError) as error:
         raise ProjectNotFoundError(project_id) from error
+
+
+def list_projects(project_root: Path, output_root: Path) -> list[Project]:
+    if not project_root.is_dir():
+        return []
+    projects: list[Project] = []
+    for candidate in project_root.iterdir():
+        if not candidate.is_dir():
+            continue
+        try:
+            projects.append(get_project(project_root, output_root, candidate.name))
+        except (ProjectNotFoundError, ValueError):
+            continue
+    return sorted(projects, key=lambda item: item.created_at, reverse=True)

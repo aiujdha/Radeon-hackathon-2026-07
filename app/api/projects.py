@@ -8,10 +8,17 @@ from app.services.projects import (
     ProjectNotFoundError,
     create_project,
     get_project,
+    list_projects,
 )
 
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
+
+
+@router.get("", response_model=list[Project])
+def list_all(request: Request) -> list[Project]:
+    settings = request.app.state.settings
+    return list_projects(settings.project_root, settings.output_root)
 
 
 @router.post("", response_model=Project, status_code=status.HTTP_201_CREATED)
