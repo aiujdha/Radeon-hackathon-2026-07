@@ -12,3 +12,5 @@ question has no supporting evidence.
   an answer based only on arbitrary dense-neighbor results.
 - CI collects real Phase B unit tests for indexing, retrieval, and QA refusal.
 - Re-indexing an unchanged document does not invoke the embedder again.
+- A deployment can use separate OpenAI-compatible endpoints for chat completion
+  and embeddings, without routing embedding requests to the chat-only service.

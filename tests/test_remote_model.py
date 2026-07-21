@@ -28,9 +28,11 @@ from app.rag.retriever import Retriever
 
 # ── 从 settings 读取远程 AMD 地址 ──
 settings = Settings()
-SERVER = str(settings.llm_base_url).rstrip("/v1")  # "http://10.244.151.84:8080"
+CHAT_SERVER = str(settings.llm_base_url).rstrip("/v1")
+EMBEDDING_SERVER = str(settings.embedding_base_url).rstrip("/v1")
 MODEL = settings.llm_model
-print(f"[CONFIG] Remote AMD server: {SERVER}")
+print(f"[CONFIG] Chat server: {CHAT_SERVER}")
+print(f"[CONFIG] Embedding server: {EMBEDDING_SERVER}")
 print(f"[CONFIG] Model: {MODEL}")
 
 
@@ -129,7 +131,8 @@ def bold(s): return f"{Colors.BOLD}{s}{Colors.RESET}"
 def main():
     print(f"\n{bold('='*65)}")
     print(bold("  Phase 2 RAG - Full Test via Remote AMD Model"))
-    print(bold(f"  Server: {SERVER}"))
+    print(bold(f"  Chat server: {CHAT_SERVER}"))
+    print(bold(f"  Embedding server: {EMBEDDING_SERVER}"))
     print(bold("="*65) + "\n")
 
     checks_passed = 0
@@ -153,7 +156,7 @@ def main():
 
     health_ok = False
     try:
-        r = httpx.get(f"{SERVER}/health", timeout=10)
+        r = httpx.get(f"{EMBEDDING_SERVER}/health", timeout=10)
         check(f"HTTP {r.status_code}", r.status_code == 200)
         health = r.json()
         # 兼容多种 /health 响应格式：{"loaded":true}, {"status":"ok"}, {"status":"healthy"} 等
@@ -164,7 +167,7 @@ def main():
         check("Server health check", health_ok)
         print(f"       Health response: {json.dumps(health, ensure_ascii=False)}")
     except httpx.ConnectError:
-        print(fail(f"  Cannot reach {SERVER}/health — check network/firewall"))
+        print(fail(f"  Cannot reach {EMBEDDING_SERVER}/health — check network/firewall"))
         return 1
     except Exception as e:
         print(fail(f"  Health check error: {e}"))
@@ -179,7 +182,7 @@ def main():
     # ══════════════════════════════════════════════════════════════
     print(f"\n{info('[2/6]')} Testing real embeddings via remote AMD...")
     embedder = LLMEmbedder(
-        base_url=f"{SERVER}/v1",
+        base_url=f"{EMBEDDING_SERVER}/v1",
         model=MODEL,
         timeout=60,
     )
@@ -217,7 +220,7 @@ def main():
     print(f"  Total chunks: {len(all_chunks)}")
     check("Chunk count == 20", len(all_chunks) == 20)
 
-    index = ProjectIndex("phase2_test", embedder=embedder)
+    index = ProjectIndex("phase2-test", embedder=embedder)
     t0 = time.time()
     index.index(all_docs)
     print(f"  Indexed in {time.time()-t0:.1f}s")
@@ -232,7 +235,7 @@ def main():
     index.save()
     print(f"  Saved to {index._dir}")
 
-    loaded = ProjectIndex("phase2_test", embedder=embedder)
+    loaded = ProjectIndex("phase2-test", embedder=embedder)
     loaded.load()
     check("Loaded chunk count", len(loaded.chunks) == 20)
     check("Loaded FAISS size", loaded._faiss.ntotal == 20)
@@ -321,7 +324,8 @@ def main():
 
     # ── 保存报告 ──
     report = {
-        "server": SERVER,
+        "chat_server": CHAT_SERVER,
+        "embedding_server": EMBEDDING_SERVER,
         "model": MODEL,
         "total": benchmark.total,
         "factual_hits": benchmark.factual_hits,
