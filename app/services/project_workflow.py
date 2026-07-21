@@ -15,7 +15,7 @@ from app.rag.parsers import import_project
 from app.rag.retriever import Retriever
 from app.schemas import Evidence, ReportDraft, Task, TaskEvaluation
 from app.security.paths import ensure_project_path
-from app.services.phase_c import evaluate_tasks, evaluate_tasks_with_llm, load_tasks, render_reports
+from app.services.phase_c import evaluate_tasks, evaluate_tasks_with_llm, load_tasks, render_report_bundle
 
 
 @dataclass
@@ -28,6 +28,8 @@ class WorkflowArtifacts:
     evaluations: list[TaskEvaluation] = field(default_factory=list)
     report: ReportDraft | None = None
     report_relative_path: str | None = None
+    risk_relative_path: str | None = None
+    plan_relative_path: str | None = None
 
     def summary(self) -> dict[str, str]:
         return {
@@ -35,6 +37,8 @@ class WorkflowArtifacts:
             "indexed_chunks": str(self.chunk_count),
             "tasks_evaluated": str(len(self.evaluations)),
             **({"report": self.report_relative_path} if self.report_relative_path else {}),
+            **({"risk_csv": self.risk_relative_path} if self.risk_relative_path else {}),
+            **({"next_week_plan": self.plan_relative_path} if self.plan_relative_path else {}),
         }
 
 
@@ -91,14 +95,35 @@ def build_project_report_tools(
         return {"evaluation_count": len(artifacts.evaluations)}
 
     def draft(context: RunContext) -> dict[str, Any]:
-        artifacts.report = render_reports(context.project_id, artifacts.evaluations)
+        bundle = render_report_bundle(context.project_id, artifacts.tasks, artifacts.evaluations)
+        artifacts.report = ReportDraft(
+            project_id=context.project_id,
+            markdown=bundle.markdown,
+            evaluations=artifacts.evaluations,
+        )
         report_path = ensure_project_path(
             settings.output_root, context.project_id, "reports", f"{context.run_id}.md"
         )
+        risk_path = ensure_project_path(
+            settings.output_root, context.project_id, "risks", f"{context.run_id}.csv"
+        )
+        plan_path = ensure_project_path(
+            settings.output_root, context.project_id, "plans", f"{context.run_id}.md"
+        )
         report_path.parent.mkdir(parents=True, exist_ok=True)
+        risk_path.parent.mkdir(parents=True, exist_ok=True)
+        plan_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(artifacts.report.markdown, encoding="utf-8")
+        risk_path.write_text(bundle.risk_csv, encoding="utf-8", newline="")
+        plan_path.write_text(bundle.next_week_plan, encoding="utf-8")
         artifacts.report_relative_path = f"reports/{context.run_id}.md"
-        return {"report": artifacts.report_relative_path}
+        artifacts.risk_relative_path = f"risks/{context.run_id}.csv"
+        artifacts.plan_relative_path = f"plans/{context.run_id}.md"
+        return {
+            "report": artifacts.report_relative_path,
+            "risk_csv": artifacts.risk_relative_path,
+            "next_week_plan": artifacts.plan_relative_path,
+        }
 
     return {"scan": scan, "index": index, "retrieve": retrieve, "evaluate": evaluate, "draft": draft}, artifacts
 
