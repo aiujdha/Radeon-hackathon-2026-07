@@ -10,6 +10,9 @@ from app.observability.audit import validate_run_id
 from app.schemas import RunState, RunStatus
 from app.security.paths import ensure_project_path, validate_project_id
 from app.services.projects import ProjectNotFoundError, project_paths
+from app.agent.runner import ControlledRunner
+from app.observability.audit import AuditTrail
+from app.services.project_workflow import build_project_report_tools
 
 
 class RunNotFoundError(RuntimeError):
@@ -61,3 +64,30 @@ def save_run(settings: Settings, state: RunState) -> RunState:
     updated = state.model_copy(update={"updated_at": datetime.now(UTC)})
     _write_state(_run_path(settings, updated.project_id, updated.run_id), updated)
     return updated
+
+
+def execute_project_report_run(
+    settings: Settings,
+    project_id: str,
+    run_id: str,
+    *,
+    index_factory=None,
+    use_llm: bool = True,
+    retrieval_min_score: float = 0.35,
+) -> RunState:
+    """Execute the approved RAG-to-report workflow for one queued project run."""
+    state = get_run(settings, project_id, run_id)
+    tools, artifacts = build_project_report_tools(
+        settings,
+        index_factory=index_factory,
+        use_llm=use_llm,
+        retrieval_min_score=retrieval_min_score,
+    )
+    runner = ControlledRunner(
+        tools,
+        AuditTrail(settings.log_root, state.run_id),
+        max_steps=settings.agent_max_steps,
+    )
+    completed = runner.run(state)
+    completed = completed.model_copy(update={"artifacts": artifacts.summary()})
+    return save_run(settings, completed)

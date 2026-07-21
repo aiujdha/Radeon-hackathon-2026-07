@@ -90,6 +90,7 @@ class RunState(BaseModel):
     updated_at: datetime
     completed_at: datetime | None = None
     error: str | None = Field(default=None, max_length=4000)
+    artifacts: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("project_id")
     @classmethod

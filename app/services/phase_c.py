@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Awaitable
 from datetime import date, datetime
 from pathlib import Path
 
 from app.config import Settings
-from app.reports.generator import evaluate_with_rules
+from app.llm.client import LLMClient
+from app.reports.generator import evaluate_with_llm, evaluate_with_rules
 from app.schemas import Evidence, ReportDraft, Task, TaskEvaluation, TaskStatus
 from app.security.paths import ensure_project_path, validate_project_id
 from app.tools.task_checker import _parse_date
@@ -45,21 +47,20 @@ def evaluate_tasks(
     for task in tasks:
         evidence = evidence_by_task.get(task.task_id, [])
         internal = evaluate_with_rules(_to_record(task), [item.excerpt for item in evidence])
-        missing = internal.check_result.missing_items if internal.check_result else []
-        explanation_parts = [internal.evidence_summary]
-        if internal.risk_reason:
-            explanation_parts.append(f"Risk: {internal.risk_reason}")
-        if internal.recommendation:
-            explanation_parts.append(f"Recommendation: {internal.recommendation}")
-        evaluations.append(
-            TaskEvaluation(
-                task_id=task.task_id,
-                status=TaskStatus(internal.status.value),
-                explanation="\n".join(part for part in explanation_parts if part),
-                evidence=evidence,
-                missing_evidence=missing,
-            )
-        )
+        evaluations.append(_to_evaluation(task, evidence, internal))
+    return evaluations
+
+
+async def evaluate_tasks_with_llm(
+    tasks: list[Task], evidence_by_task: dict[str, list[Evidence]], settings: Settings
+) -> list[TaskEvaluation]:
+    """Keep status rule-owned while using the configured chat model for explanations."""
+    client = LLMClient(settings)
+    evaluations: list[TaskEvaluation] = []
+    for task in tasks:
+        evidence = evidence_by_task.get(task.task_id, [])
+        internal = await evaluate_with_llm(_to_record(task), [item.excerpt for item in evidence], client)
+        evaluations.append(_to_evaluation(task, evidence, internal))
     return evaluations
 
 
@@ -130,4 +131,20 @@ def _to_record(task: Task) -> TaskRecord:
         priority=task.priority or "normal",
         acceptance_criteria=task.acceptance_criteria or "",
         original_source=task.source_reference or "",
+    )
+
+
+def _to_evaluation(task: Task, evidence: list[Evidence], internal: object) -> TaskEvaluation:
+    missing = internal.check_result.missing_items if internal.check_result else []
+    explanation_parts = [internal.evidence_summary]
+    if internal.risk_reason:
+        explanation_parts.append(f"Risk: {internal.risk_reason}")
+    if internal.recommendation:
+        explanation_parts.append(f"Recommendation: {internal.recommendation}")
+    return TaskEvaluation(
+        task_id=task.task_id,
+        status=TaskStatus(internal.status.value),
+        explanation="\n".join(part for part in explanation_parts if part),
+        evidence=evidence,
+        missing_evidence=missing,
     )
