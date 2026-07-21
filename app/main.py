@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.api.health import router as health_router
 from app.api.projects import router as projects_router
+from app.api.runs import router as runs_router
 from app.config import Settings
 
 
@@ -29,6 +30,7 @@ def create_app(
     app.state.model_health_transport = model_health_transport
     app.include_router(health_router)
     app.include_router(projects_router)
+    app.include_router(runs_router)
     return app
 
 

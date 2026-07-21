@@ -25,6 +25,18 @@ class TaskStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class RunStatus(StrEnum):
+    QUEUED = "queued"
+    SCANNING = "scanning"
+    INDEXING = "indexing"
+    RETRIEVING = "retrieving"
+    EVALUATING = "evaluating"
+    DRAFTING = "drafting"
+    WAITING_CONFIRMATION = "waiting_confirmation"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class ProjectCreate(BaseModel):
     project_id: str = Field(description="Stable lowercase project identifier")
     name: str = Field(min_length=1, max_length=120)
@@ -72,8 +84,11 @@ class TaskEvaluation(BaseModel):
 class RunState(BaseModel):
     run_id: str = Field(min_length=1, max_length=120)
     project_id: str
-    status: str = Field(min_length=1, max_length=80)
+    status: RunStatus = RunStatus.QUEUED
     current_step: int = Field(default=0, ge=0, le=8)
+    created_at: datetime
+    updated_at: datetime
+    completed_at: datetime | None = None
     error: str | None = Field(default=None, max_length=4000)
 
     @field_validator("project_id")
