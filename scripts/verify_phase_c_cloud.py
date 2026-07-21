@@ -18,6 +18,7 @@ from app.tools.task_reader import TaskRecord
 
 def main() -> int:
     settings = Settings()
+    llm_settings = Settings(llm_timeout_seconds=max(settings.llm_timeout_seconds, 90))
     project_id = "phase-c-smoke-" + datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     project = create_project(
         settings.project_root,
@@ -55,7 +56,13 @@ def main() -> int:
         original_source=tasks[0].source_reference or "",
     )
     rule_only = evaluate_with_rules(record, [evidence.excerpt])
-    llm_evaluation = asyncio.run(evaluate_with_llm(record, [evidence.excerpt], LLMClient(settings)))
+    llm_client = LLMClient(llm_settings)
+    direct_response = asyncio.run(
+        llm_client.generate_text("Reply with exactly PHASE_C_LLM_OK.", temperature=0)
+    )
+    if not direct_response.strip():
+        raise AssertionError("chat model returned an empty smoke-test response")
+    llm_evaluation = asyncio.run(evaluate_with_llm(record, [evidence.excerpt], llm_client))
     if llm_evaluation.status != rule_only.status:
         raise AssertionError("LLM explanation changed the rule-owned task status")
 
@@ -68,7 +75,9 @@ def main() -> int:
                 "rule_status": rule_only.status.value,
                 "llm_status": llm_evaluation.status.value,
                 "citation_retained": evidence.relative_path in draft.markdown,
+                "direct_llm_response_length": len(direct_response),
                 "llm_explanation_length": len(llm_evaluation.evidence_summary),
+                "llm_explanation_applied": llm_evaluation.evidence_summary != rule_only.evidence_summary,
             },
             ensure_ascii=False,
             indent=2,
