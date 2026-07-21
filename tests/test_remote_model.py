@@ -220,7 +220,7 @@ def main():
     print(f"  Total chunks: {len(all_chunks)}")
     check("Chunk count == 20", len(all_chunks) == 20)
 
-    index = ProjectIndex("phase2_test", embedder=embedder)
+    index = ProjectIndex("phase2-test", embedder=embedder)
     t0 = time.time()
     index.index(all_docs)
     print(f"  Indexed in {time.time()-t0:.1f}s")
@@ -235,7 +235,7 @@ def main():
     index.save()
     print(f"  Saved to {index._dir}")
 
-    loaded = ProjectIndex("phase2_test", embedder=embedder)
+    loaded = ProjectIndex("phase2-test", embedder=embedder)
     loaded.load()
     check("Loaded chunk count", len(loaded.chunks) == 20)
     check("Loaded FAISS size", loaded._faiss.ntotal == 20)
