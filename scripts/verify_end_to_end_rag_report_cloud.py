@@ -45,12 +45,20 @@ def main() -> int:
     if result.status is not RunStatus.COMPLETED:
         raise AssertionError(f"workflow failed: {result.error}")
     report_relative_path = result.artifacts.get("report")
-    if not report_relative_path:
-        raise AssertionError("completed workflow has no report artifact")
+    risk_relative_path = result.artifacts.get("risk_csv")
+    plan_relative_path = result.artifacts.get("next_week_plan")
+    result_relative_path = result.artifacts.get("result")
+    if not all((report_relative_path, risk_relative_path, plan_relative_path, result_relative_path)):
+        raise AssertionError("completed workflow is missing one or more report artifacts")
     report_path = settings.output_root / project_id / report_relative_path
+    risk_path = settings.output_root / project_id / risk_relative_path
+    plan_path = settings.output_root / project_id / plan_relative_path
+    result_path = settings.output_root / project_id / result_relative_path
     report = report_path.read_text(encoding="utf-8")
     if "status.md" not in report:
         raise AssertionError("report did not retain retrieved source citation")
+    if not risk_path.is_file() or not plan_path.is_file() or not result_path.is_file():
+        raise AssertionError("one or more report artifact files were not written")
 
     print(
         json.dumps(
@@ -62,6 +70,9 @@ def main() -> int:
                 "artifacts": result.artifacts,
                 "direct_chat_response_length": len(direct_reply),
                 "report_has_status_citation": "status.md" in report,
+                "has_risk_csv": risk_path.is_file(),
+                "has_next_week_plan": plan_path.is_file(),
+                "has_structured_result": result_path.is_file(),
             },
             ensure_ascii=False,
             indent=2,
