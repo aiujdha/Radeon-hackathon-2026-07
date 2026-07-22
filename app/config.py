@@ -27,6 +27,29 @@ class Settings(BaseSettings):
     log_root: Path = Path("/workspace/office-agent/logs")
     agent_max_steps: int = Field(default=8, ge=1, le=8)
 
+    # ------------------------------------------------------------------
+    # Stage E — File upload hardening
+    # ------------------------------------------------------------------
+    max_upload_size_mb: int = Field(default=50, ge=1, le=1024)
+    max_upload_filename_length: int = Field(default=255, ge=32, le=1024)
+    virus_scan_enabled: bool = Field(default=False)
+    virus_scan_command: list[str] = Field(default_factory=lambda: ["clamdscan", "--fdpass"])
+
+    # ------------------------------------------------------------------
+    # Stage E — Cleanup retention
+    # ------------------------------------------------------------------
+    cleanup_smoke_project_days: int = Field(default=1, ge=0, le=365)
+    cleanup_temp_upload_days: int = Field(default=7, ge=0, le=365)
+    cleanup_old_index_days: int = Field(default=30, ge=0, le=365)
+    cleanup_cron_interval_minutes: int = Field(default=60, ge=1, le=1440)
+    cleanup_enabled: bool = Field(default=True)
+
+    # ------------------------------------------------------------------
+    # Stage E — Run lifecycle
+    # ------------------------------------------------------------------
+    run_max_retries: int = Field(default=3, ge=0, le=10)
+    run_timeout_seconds: int = Field(default=600, ge=30, le=7200)
+
     @field_validator("llm_base_url", "embedding_base_url")
     @classmethod
     def require_openai_v1_endpoint(cls, value: HttpUrl) -> HttpUrl:
@@ -42,3 +65,7 @@ class Settings(BaseSettings):
             self.output_root,
             self.log_root,
         )
+
+    @property
+    def max_upload_size_bytes(self) -> int:
+        return self.max_upload_size_mb * 1024 * 1024

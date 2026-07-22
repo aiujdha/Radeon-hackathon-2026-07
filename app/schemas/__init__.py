@@ -1,25 +1,41 @@
 """Stable public contracts shared by API, orchestration, and application modules."""
 
-from app.schemas.models import (
+from app.schemas.models import (  # noqa: F401
+    ALLOWED_EXTENSIONS,
+    ALLOWED_MIME_TYPES,
+    ErrorDetail,
     Evidence,
+    FileValidationError,
     Project,
     ProjectCreate,
     ReportDraft,
+    RunProgress,
     RunState,
     RunStatus,
+    StepDef,
+    StepTiming,
     Task,
     TaskEvaluation,
     TaskStatus,
+    UploadResult,
 )
 
 __all__ = (
+    "ALLOWED_EXTENSIONS",
+    "ALLOWED_MIME_TYPES",
+    "ErrorDetail",
     "Evidence",
+    "FileValidationError",
     "Project",
     "ProjectCreate",
     "ReportDraft",
+    "RunProgress",
     "RunState",
     "RunStatus",
+    "StepDef",
+    "StepTiming",
     "Task",
     "TaskEvaluation",
     "TaskStatus",
+    "UploadResult",
 )
