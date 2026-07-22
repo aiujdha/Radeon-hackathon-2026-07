@@ -21,7 +21,9 @@
 | TestRiskScanner | 9 | risk_scanner.py (扫描编排) |
 | TestStageGErrorCodes | 2 | error_codes.py (Stage G 码) |
 | TestStageGModels | 5 | models.py (Stage G 模型) |
-| **合计** | **74** | |
+| TestQualityMetricsService | 4 | quality_metrics.py |
+| TestDocVersionManagement | 10 | doc_version.py |
+| **合计** | **85** | |
 
 ## 执行结果
 
@@ -112,7 +114,7 @@ tests/test_stage_g.py::TestStageGModels::test_change_impact_report_model PASSED
 tests/test_stage_g.py::TestStageGModels::test_quality_test_case_model PASSED
 tests/test_stage_g.py::TestStageGModels::test_quality_benchmark_run PASSED
 
-============================= 74 passed, 0 failed =============================
+--- 85 passed, 0 failed ---
 ```
 
 ## 验收标准对照
@@ -130,4 +132,4 @@ tests/test_stage_g.py::TestStageGModels::test_quality_benchmark_run PASSED
 | 错误码注册 (7 codes) | PASS | TestStageGErrorCodes (2 tests) |
 | 模型验证 | PASS | TestStageGModels (5 tests) |
 
-**结论：74/74 测试通过，所有 Stage G 验收目标达成。**
+**结论：85/85 测试通过，所有 Stage G 验收目标达成。**
