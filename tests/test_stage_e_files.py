@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings
@@ -107,11 +108,9 @@ def test_validate_file_rejects_extension_content_mismatch(tmp_path: Path) -> Non
     """PDF magic bytes with .txt extension should be flagged."""
     s = _settings(tmp_path)
     pdf_content = b"%PDF-1.4\nfake pdf"
-    # This should be caught by extension mismatch (MIME not matching extension)
-    try:
+    with pytest.raises(UploadValidationError) as captured:
         validate_file("report.txt", pdf_content, s)
-    except UploadValidationError as exc:
-        assert "MIME" in exc.validation.error_code or "EXTENSION" in exc.validation.error_code
+    assert captured.value.validation.error_code == "FILE_MIME_MISMATCH"
 
 
 def test_mime_type_validates_content(tmp_path: Path) -> None:

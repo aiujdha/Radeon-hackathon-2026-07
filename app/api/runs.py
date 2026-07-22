@@ -69,7 +69,7 @@ def list_project_runs(project_id: str, request: Request) -> list[RunState]:
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{run_id}/execute", response_model=RunState)
+@router.post("/{run_id}/execute", response_model=RunState, status_code=status.HTTP_202_ACCEPTED)
 async def execute(project_id: str, run_id: str, request: Request) -> RunState:
     """Kick off background execution. Returns the queued RunState immediately."""
     try:

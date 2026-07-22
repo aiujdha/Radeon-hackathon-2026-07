@@ -110,68 +110,54 @@ def test_runner_honours_cancel_requested_flag(tmp_path: Path) -> None:
 def test_runner_cancel_mid_pipeline(tmp_path: Path) -> None:
     """Cancel flag set during a tool should stop at next step boundary."""
     audit = AuditTrail(tmp_path, "a" * 32)
-
-    tool_order: list[str] = []
-    cancel_signal = {"raised": False}
+    calls: list[str] = []
+    signal = {"requested": False}
 
     def _scan(_ctx):
-        tool_order.append("scan")
+        calls.append("scan")
+        signal["requested"] = True
         return {"tool": "scan"}
 
-    def _index(_ctx):
-        tool_order.append("index")
-        cancel_signal["raised"] = True
-        return {"tool": "index"}
-
-    def _retrieve(_ctx):
-        tool_order.append("retrieve")
-        return {"tool": "retrieve"}
-
-    def _eval(_ctx):
-        tool_order.append("evaluate")
-        return {"tool": "evaluate"}
-
-    def _draft(_ctx):
-        tool_order.append("draft")
-        return {"tool": "draft"}
-
-    state = _queued_state()
-    runner = ControlledRunner(
-        {"scan": _scan, "index": _index, "retrieve": _retrieve, "evaluate": _eval, "draft": _draft},
-        audit,
-    )
-    # Patch cancel_requested after index runs
-    orig_run = runner.run
-
-    def _run_with_cancel(s: RunState) -> RunState:
-        # The cancel is set externally, simulating API call during execution
-        s = s.model_copy(update={"cancel_requested": True})
-        return orig_run(s)
-
-    # Actually, cancel is checked before each step in run(). To test mid-pipeline,
-    # we need to set cancel_registered on state. Let's do it differently:
-    # Use progress_callback to inject cancel after index runs
-    def _inject_cancel(run_state: RunState) -> None:
-        if cancel_signal["raised"]:
-            pass  # external cancel happens via API; hard to simulate in single-thread
-
-    # Simpler test: start queued, run step 1, then run a new runner on that state
-    runner2 = ControlledRunner(
-        {"scan": _scan, "index": _index, "retrieve": _retrieve, "evaluate": _eval, "draft": _draft},
-        AuditTrail(tmp_path, "b" * 32),
-    )
-    # Run through scan+index manually by constructing a custom pipeline
-    # Better: just verify that if we set cancel_requested in state, it's respected at run()
-    state = _queued_state(run_id="c" * 32)
-    runner3 = ControlledRunner(
-        {"scan": _scan, "index": _index, "retrieve": _retrieve, "evaluate": _eval, "draft": _draft},
-        AuditTrail(tmp_path, "c" * 32),
-    )
-
-    # Do step-by-step using progress callback approach
-    # Let's just verify the flag is respected: start with cancel, first step should skip
-    result = runner3.run(state.model_copy(update={"cancel_requested": True}))
+    tools = {
+        "scan": _scan,
+        "index": lambda _ctx: calls.append("index") or {},
+        "retrieve": lambda _ctx: {},
+        "evaluate": lambda _ctx: {},
+        "draft": lambda _ctx: {},
+    }
+    result = ControlledRunner(tools, audit, cancel_check=lambda: signal["requested"]).run(_queued_state())
     assert result.status is RunStatus.CANCELLED
+    assert result.cancel_requested is True
+    assert calls == ["scan"]
+
+
+def test_runner_honours_external_cancel_after_a_completed_step(tmp_path: Path) -> None:
+    """A cancellation persisted during a tool stops the next pipeline step."""
+    audit = AuditTrail(tmp_path, "d" * 32)
+    calls: list[str] = []
+    cancel_signal = {"requested": False}
+
+    def scan(_ctx):
+        calls.append("scan")
+        cancel_signal["requested"] = True
+        return {"tool": "scan"}
+
+    tools = {
+        "scan": scan,
+        "index": lambda _ctx: calls.append("index") or {"tool": "index"},
+        "retrieve": lambda _ctx: {"tool": "retrieve"},
+        "evaluate": lambda _ctx: {"tool": "evaluate"},
+        "draft": lambda _ctx: {"tool": "draft"},
+    }
+    result = ControlledRunner(
+        tools,
+        audit,
+        cancel_check=lambda: cancel_signal["requested"],
+    ).run(_queued_state(run_id="d" * 32))
+
+    assert result.status is RunStatus.CANCELLED
+    assert result.cancel_requested is True
+    assert calls == ["scan"]
 
 
 # ── Progress callback ───────────────────────────────────────────────────────

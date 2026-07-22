@@ -33,6 +33,7 @@ Tool = Callable[[RunContext], dict[str, Any]]
 
 # Progress callback signature: called after each step with the latest RunState
 ProgressCallback = Callable[[RunState], None] | None
+CancelCheck = Callable[[], bool] | None
 
 
 class ControlledRunner:
@@ -59,6 +60,7 @@ class ControlledRunner:
         *,
         max_steps: int = 8,
         progress_callback: ProgressCallback = None,
+        cancel_check: CancelCheck = None,
     ):
         if not 1 <= max_steps <= 8:
             raise ValueError("max_steps must be between 1 and 8")
@@ -66,6 +68,7 @@ class ControlledRunner:
         self._audit = audit
         self._max_steps = max_steps
         self._progress_callback = progress_callback
+        self._cancel_check = cancel_check
 
     def run(self, state: RunState) -> RunState:
         if state.status is not RunStatus.QUEUED:
@@ -84,7 +87,8 @@ class ControlledRunner:
                 return self._fail(state, timing_list, step - 1, "maximum step count reached")
 
             # Cancel check
-            if state.cancel_requested:
+            if self._is_cancel_requested(state):
+                state = state.model_copy(update={"cancel_requested": True})
                 return self._cancel(state, timing_list, step - 1)
 
             tool = self._tools.get(tool_name)
@@ -132,6 +136,12 @@ class ControlledRunner:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _is_cancel_requested(self, state: RunState) -> bool:
+        """Read the latest external cancellation signal between pipeline steps."""
+        if state.cancel_requested:
+            return True
+        return bool(self._cancel_check and self._cancel_check())
 
     def _fail(self, state: RunState, timing_list: list[StepTiming], step: int, error: str) -> RunState:
         failed_at = datetime.now(UTC)
