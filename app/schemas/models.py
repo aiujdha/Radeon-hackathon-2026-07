@@ -217,3 +217,181 @@ class ErrorDetail(BaseModel):
     message: str
     user_message: str = ""
     details: dict[str, str] = Field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# Phase F — Task lifecycle & human confirmation models
+# ---------------------------------------------------------------------------
+
+class PhaseFTaskStatus(StrEnum):
+    """Task status values for the SQLite task lifecycle."""
+    PENDING_CONFIRMATION = "pending_confirmation"
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    MOSTLY_COMPLETED = "mostly_completed"
+    COMPLETED = "completed"
+    DELAYED = "delayed"
+    CANCELLED = "cancelled"
+
+
+class TaskCreate(BaseModel):
+    """Request model for creating a task via API."""
+    title: str = Field(min_length=1, max_length=500)
+    owner: str | None = Field(default=None, max_length=120)
+    due_date: date | None = None
+    priority: str | None = Field(default=None, max_length=40)
+    acceptance_criteria: str | None = Field(default=None, max_length=4000)
+    dependencies: list[str] = Field(default_factory=list, max_length=50)
+    source_ref: str | None = Field(default=None, max_length=1000)
+    status: PhaseFTaskStatus = PhaseFTaskStatus.PENDING_CONFIRMATION
+
+
+class TaskUpdate(BaseModel):
+    """Request model for updating a task via API."""
+    title: str | None = Field(default=None, max_length=500)
+    owner: str | None = Field(default=None, max_length=120)
+    due_date: date | None = None
+    priority: str | None = Field(default=None, max_length=40)
+    acceptance_criteria: str | None = Field(default=None, max_length=4000)
+    dependencies: list[str] | None = None
+    source_ref: str | None = Field(default=None, max_length=1000)
+
+
+class TaskStatusTransition(BaseModel):
+    """Request model for changing a task's status."""
+    status: PhaseFTaskStatus
+    reason: str = Field(default="", max_length=2000)
+    changed_by: str | None = Field(default=None, max_length=120)
+
+
+class TaskRecord(BaseModel):
+    """Full task record as stored in SQLite."""
+    id: str
+    project_id: str
+    title: str
+    owner: str | None = None
+    due_date: str | None = None
+    priority: str | None = None
+    acceptance_criteria: str | None = None
+    dependencies: list[str] = Field(default_factory=list)
+    source_ref: str | None = None
+    status: PhaseFTaskStatus = PhaseFTaskStatus.PENDING_CONFIRMATION
+    confirmed_by: str | None = None
+    confirmed_at: str | None = None
+    confirmation_basis: str | None = None
+    confirmation_notes: str | None = None
+    created_at: str = ""
+    updated_at: str = ""
+
+
+class TaskChangeRecord(BaseModel):
+    """Record of a single task status transition."""
+    id: int
+    task_id: str
+    project_id: str
+    from_status: str | None = None
+    to_status: str
+    changed_by: str | None = None
+    change_reason: str | None = None
+    changed_at: str = ""
+
+
+class CandidateTask(BaseModel):
+    """A task extracted from source material, pending human confirmation."""
+    title: str = Field(min_length=1, max_length=500)
+    owner: str | None = Field(default=None, max_length=120)
+    due_date: date | None = None
+    priority: str | None = Field(default=None, max_length=40)
+    acceptance_criteria: str | None = Field(default=None, max_length=4000)
+    dependencies: list[str] = Field(default_factory=list)
+    source_ref: str | None = Field(default=None, max_length=1000)
+    source_kind: str = Field(min_length=1, max_length=60)
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+
+
+class ConfirmationRecord(BaseModel):
+    """A record in the human confirmation queue."""
+    id: int
+    task_id: str
+    project_id: str
+    candidate_title: str
+    candidate_owner: str | None = None
+    candidate_due_date: str | None = None
+    candidate_priority: str | None = None
+    candidate_acceptance: str | None = None
+    candidate_dependencies: list[str] = Field(default_factory=list)
+    source_ref: str | None = None
+    source_kind: str
+    confidence: float = 0.5
+    status: str = "pending"
+    confirmed_by: str | None = None
+    confirmation_basis: str | None = None
+    confirmation_notes: str | None = None
+    confirmed_at: str | None = None
+    created_at: str = ""
+
+
+class ConfirmationAction(BaseModel):
+    """Request model for a confirmation action (accept / modify / ignore)."""
+    action: str = Field(pattern="^(accept|modify|ignore)$")
+    confirmed_by: str = Field(min_length=1, max_length=120)
+    confirmation_basis: str | None = Field(default=None, max_length=1000)
+    confirmation_notes: str | None = Field(default=None, max_length=4000)
+    modified_title: str | None = Field(default=None, max_length=500)
+    modified_owner: str | None = Field(default=None, max_length=120)
+    modified_due_date: date | None = None
+    modified_priority: str | None = Field(default=None, max_length=40)
+    modified_acceptance: str | None = Field(default=None, max_length=4000)
+    modified_dependencies: list[str] | None = None
+
+
+class TaskImportDiff(BaseModel):
+    """Diff preview for CSV / XLSX import before confirmation."""
+    new_rows: int = Field(default=0, ge=0)
+    duplicate_rows: int = Field(default=0, ge=0)
+    conflict_rows: int = Field(default=0, ge=0)
+    preview: list[dict[str, str]] = Field(default_factory=list)
+
+
+class TaskImportConfirm(BaseModel):
+    """Request model for confirming an import."""
+    confirmed_by: str = Field(min_length=1, max_length=120)
+    skip_duplicates: bool = True
+    overwrite_conflicts: bool = False
+
+
+class TaskImportResult(BaseModel):
+    """Result after confirming and executing an import."""
+    imported: int = 0
+    skipped: int = 0
+    errors: int = 0
+    details: list[str] = Field(default_factory=list)
+
+
+class OperationAuditRecord(BaseModel):
+    """Operation audit record."""
+    id: int
+    project_id: str
+    entity_type: str
+    entity_id: str
+    operation: str
+    operator: str | None = None
+    details: str | None = None
+    created_at: str = ""
+
+
+class TaskExtractionRequest(BaseModel):
+    """Request model for extracting candidate tasks from text."""
+    source_text: str = Field(min_length=0, max_length=100000)
+    source_kind: str = Field(default="meeting_notes", max_length=60)
+    project_id: str = Field(min_length=1, max_length=120)
+
+
+class TaskExtractionResult(BaseModel):
+    """Result of extracting candidate tasks from a text source."""
+    candidates: list[CandidateTask] = Field(default_factory=list)
+
+
+class ConfirmQueueFilter(BaseModel):
+    """Filter for listing confirmation queue items."""
+    status: str | None = Field(default=None, pattern="^(pending|accepted|ignored)$")

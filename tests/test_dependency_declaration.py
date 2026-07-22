@@ -32,3 +32,25 @@ def test_stage_e_dependencies_are_declared() -> None:
 
     # Verify pydantic-settings is declared
     assert "pydantic-settings" in runtime or "pydantic_settings" in runtime or "pydantic" in runtime
+
+
+def test_phase_f_dependencies_are_declared() -> None:
+    """Verify Phase F dependencies are in pyproject.toml.
+
+    Phase F requires:
+    - openpyxl (already used by Phase C, reused for XLSX import)
+    - fastapi (already used, reused for task API endpoints)
+    - python-multipart (already used, reused for file upload in import)
+    - No new third-party packages are required for Phase F.
+    """
+    with Path("pyproject.toml").open("rb") as file:
+        project = tomllib.load(file)["project"]
+
+    runtime = "\n".join(project["dependencies"])
+
+    # openpyxl is needed for XLSX import
+    assert "openpyxl" in runtime
+    # fastapi is needed for task API
+    assert "fastapi" in runtime
+    # python-multipart is needed for file upload (import confirm)
+    assert "python-multipart" in runtime

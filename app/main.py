@@ -12,6 +12,7 @@ from app.api.files import router as files_router
 from app.api.projects import router as projects_router
 from app.api.runs import router as runs_router
 from app.api.global_runs import router as global_runs_router
+from app.api.tasks import router as tasks_router
 from app.config import Settings
 from app.services.cleanup import run_cleanup
 
@@ -53,6 +54,7 @@ def create_app(
     app.include_router(files_router)
     app.include_router(runs_router)
     app.include_router(global_runs_router)
+    app.include_router(tasks_router)
     return app
 
 
