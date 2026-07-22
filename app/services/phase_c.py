@@ -60,7 +60,10 @@ def load_tasks(
     try:
         from app.services.task_lifecycle import TaskLifecycleService
 
-        db_path = Path(runtime_settings.sqlite_path) / "projects" / project_id / "tasks.db"
+        sqlite_path = Path(runtime_settings.sqlite_path)
+        if not sqlite_path.is_dir():
+            sqlite_path = sqlite_path.parent
+        db_path = sqlite_path / "projects" / project_id / "tasks.db"
         if db_path.exists():
             svc = TaskLifecycleService(db_path)
             confirmed_tasks = svc.list_tasks(project_id)

@@ -804,35 +804,15 @@ class TaskLifecycleService:
 
 def _task_row_to_record(row: tuple) -> TaskRecord:
     """Map a task SQLite row to a TaskRecord."""
-    cols = [d[0] for d in row if hasattr(d, "__getitem__")]
-    if not cols:
-        return TaskRecord(
-            id=str(row[0]),
-            project_id=str(row[1]),
-            title=str(row[2]),
-            owner=row[3] if row[3] else None,
-            due_date=row[4] if row[4] else None,
-            priority=row[5] if row[5] else None,
-            acceptance_criteria=row[6] if row[6] else None,
-            dependencies=list(_from_json(row[7], [])),
-            source_ref=row[8] if row[8] else None,
-            status=row[9] if row[9] else "pending_confirmation",
-            confirmed_by=row[10] if row[10] else None,
-            confirmed_at=row[11] if row[11] else None,
-            confirmation_basis=row[12] if row[12] else None,
-            confirmation_notes=row[13] if row[13] else None,
-            created_at=str(row[14]) if row[14] else "",
-            updated_at=str(row[15]) if row[15] else "",
-        )
     return TaskRecord(
         id=str(row[0]),
         project_id=str(row[1]),
-        title=str(row[2]),
+        title=str(row[2]) if row[2] else "",
         owner=str(row[3]) if row[3] else None,
         due_date=str(row[4]) if row[4] else None,
         priority=str(row[5]) if row[5] else None,
         acceptance_criteria=str(row[6]) if row[6] else None,
-        dependencies=list(_from_json(str(row[7]), [])),
+        dependencies=list(_from_json(row[7] if row[7] else None, [])),
         source_ref=str(row[8]) if row[8] else None,
         status=str(row[9]) if row[9] else "pending_confirmation",
         confirmed_by=str(row[10]) if row[10] else None,

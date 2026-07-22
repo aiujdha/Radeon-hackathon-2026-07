@@ -299,7 +299,10 @@ def main() -> None:
         # initialise service — tables created on first _connect()
         from app.services.task_lifecycle import TaskLifecycleService
 
-        db_path = Path(settings.sqlite_path) / "projects" / TEST_PROJECT / "tasks.db"
+        sqlite_path = Path(settings.sqlite_path)
+        if not sqlite_path.is_dir():
+            sqlite_path = sqlite_path.parent
+        db_path = sqlite_path / "projects" / TEST_PROJECT / "tasks.db"
         db_path.parent.mkdir(parents=True, exist_ok=True)
         service = TaskLifecycleService(db_path)
 

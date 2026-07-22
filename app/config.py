@@ -6,6 +6,9 @@ from pydantic import Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+_BASE_DIR = Path(__file__).resolve().parents[1]
+
+
 class Settings(BaseSettings):
     """Runtime configuration loaded from environment variables or `.env`."""
 
@@ -20,11 +23,21 @@ class Settings(BaseSettings):
     api_host: str = Field(default="127.0.0.1", min_length=1)
     api_port: int = Field(default=9000, ge=1, le=65535)
 
-    project_root: Path = Path("/workspace/office-agent/data/projects")
-    vector_db_root: Path = Path("/workspace/office-agent/data/vector_db")
-    sqlite_path: Path = Path("/workspace/office-agent/data/sqlite/projectpack.db")
-    output_root: Path = Path("/workspace/office-agent/outputs")
-    log_root: Path = Path("/workspace/office-agent/logs")
+    project_root: Path = Field(
+        default_factory=lambda: _BASE_DIR / "office-agent" / "data" / "projects"
+    )
+    vector_db_root: Path = Field(
+        default_factory=lambda: _BASE_DIR / "office-agent" / "data" / "vector_db"
+    )
+    sqlite_path: Path = Field(
+        default_factory=lambda: _BASE_DIR / "office-agent" / "data" / "sqlite" / "projectpack.db"
+    )
+    output_root: Path = Field(
+        default_factory=lambda: _BASE_DIR / "office-agent" / "outputs"
+    )
+    log_root: Path = Field(
+        default_factory=lambda: _BASE_DIR / "office-agent" / "logs"
+    )
     agent_max_steps: int = Field(default=8, ge=1, le=8)
 
     # ------------------------------------------------------------------

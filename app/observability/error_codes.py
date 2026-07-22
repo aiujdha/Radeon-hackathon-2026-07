@@ -197,6 +197,94 @@ APP_ERROR_CODES: dict[str, dict[str, str]] = {
         "message": "Change impact analysis failed.",
         "user_message": "变更影响分析失败。",
     },
+    # ------------------------------------------------------------------
+    # Phase H — Team Collaboration
+    # ------------------------------------------------------------------
+    "AUTH_INVALID_CREDENTIALS": {
+        "code": "AUTH_INVALID_CREDENTIALS",
+        "message": "Invalid username or password.",
+        "user_message": "用户名或密码错误。",
+    },
+    "AUTH_TOKEN_EXPIRED": {
+        "code": "AUTH_TOKEN_EXPIRED",
+        "message": "Authentication token has expired.",
+        "user_message": "认证已过期，请重新登录。",
+    },
+    "AUTH_TOKEN_MISSING": {
+        "code": "AUTH_TOKEN_MISSING",
+        "message": "Authentication token is missing from request.",
+        "user_message": "缺少认证信息，请先登录。",
+    },
+    "AUTH_TOKEN_INVALID": {
+        "code": "AUTH_TOKEN_INVALID",
+        "message": "Authentication token is invalid.",
+        "user_message": "认证信息无效。",
+    },
+    "ACCESS_DENIED": {
+        "code": "ACCESS_DENIED",
+        "message": "You do not have permission to perform this action.",
+        "user_message": "您没有权限执行此操作。",
+    },
+    "ACCESS_DENIED_PROJECT": {
+        "code": "ACCESS_DENIED_PROJECT",
+        "message": "You do not have access to this project.",
+        "user_message": "您没有访问此项目的权限。",
+    },
+    "ACCESS_DENIED_FILE_DOWNLOAD": {
+        "code": "ACCESS_DENIED_FILE_DOWNLOAD",
+        "message": "You do not have permission to download files from this project.",
+        "user_message": "您没有下载该项目文件的权限。",
+    },
+    "USER_NOT_FOUND": {
+        "code": "USER_NOT_FOUND",
+        "message": "User does not exist.",
+        "user_message": "用户不存在。",
+    },
+    "USER_NOT_IN_PROJECT": {
+        "code": "USER_NOT_IN_PROJECT",
+        "message": "User is not a member of this project.",
+        "user_message": "用户不是该项目的成员。",
+    },
+    "MEMBER_ALREADY_EXISTS": {
+        "code": "MEMBER_ALREADY_EXISTS",
+        "message": "User is already a member of this project.",
+        "user_message": "用户已是该项目成员。",
+    },
+    "COMMENT_NOT_FOUND": {
+        "code": "COMMENT_NOT_FOUND",
+        "message": "Comment does not exist.",
+        "user_message": "评论不存在。",
+    },
+    "NOTIFICATION_NOT_FOUND": {
+        "code": "NOTIFICATION_NOT_FOUND",
+        "message": "Notification does not exist.",
+        "user_message": "通知不存在。",
+    },
+    "REPORT_DRAFT_NOT_FOUND": {
+        "code": "REPORT_DRAFT_NOT_FOUND",
+        "message": "Report draft does not exist.",
+        "user_message": "报告草稿不存在。",
+    },
+    "REPORT_ALREADY_SUBMITTED": {
+        "code": "REPORT_ALREADY_SUBMITTED",
+        "message": "Report has already been submitted for approval.",
+        "user_message": "报告已提交审批。",
+    },
+    "REPORT_EXPORT_FAILED": {
+        "code": "REPORT_EXPORT_FAILED",
+        "message": "Failed to export the report.",
+        "user_message": "报告导出失败。",
+    },
+    "RISK_ASSIGNMENT_FAILED": {
+        "code": "RISK_ASSIGNMENT_FAILED",
+        "message": "Risk assignment failed.",
+        "user_message": "风险分配失败。",
+    },
+    "RISK_LIFECYCLE_INVALID": {
+        "code": "RISK_LIFECYCLE_INVALID",
+        "message": "Invalid risk lifecycle transition.",
+        "user_message": "无效的风险生命周期变更。",
+    },
 }
 
 

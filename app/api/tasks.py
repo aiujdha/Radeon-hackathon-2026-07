@@ -74,9 +74,17 @@ router = APIRouter(
 # ---------------------------------------------------------------------------
 
 
+def _sqlite_base(sqlite_path: str | Path) -> Path:
+    """Normalise *sqlite_path* to a directory (strip trailing filename if any)."""
+    p = Path(sqlite_path)
+    if not p.is_dir():
+        p = p.parent
+    return p
+
+
 def _get_service(request: Request, project_id: str) -> TaskLifecycleService:
     settings = request.app.state.settings
-    db_path = Path(settings.sqlite_path) / "projects" / project_id / "tasks.db"
+    db_path = _sqlite_base(settings.sqlite_path) / "projects" / project_id / "tasks.db"
     return TaskLifecycleService(db_path)
 
 
