@@ -159,6 +159,44 @@ APP_ERROR_CODES: dict[str, dict[str, str]] = {
         "message": "A task with this ID already exists.",
         "user_message": "该 ID 的任务已存在。",
     },
+    # ------------------------------------------------------------------
+    # Stage G — Risk & Knowledge Monitoring
+    # ------------------------------------------------------------------
+    "RISK_RULE_NOT_FOUND": {
+        "code": "RISK_RULE_NOT_FOUND",
+        "message": "Risk rule does not exist.",
+        "user_message": "风险规则不存在。",
+    },
+    "RISK_RECORD_NOT_FOUND": {
+        "code": "RISK_RECORD_NOT_FOUND",
+        "message": "Risk record does not exist.",
+        "user_message": "风险记录不存在。",
+    },
+    "RISK_SCAN_FAILED": {
+        "code": "RISK_SCAN_FAILED",
+        "message": "Risk scan execution failed.",
+        "user_message": "风险扫描执行失败。",
+    },
+    "DOC_VERSION_NOT_FOUND": {
+        "code": "DOC_VERSION_NOT_FOUND",
+        "message": "Document version record does not exist.",
+        "user_message": "文档版本记录不存在。",
+    },
+    "BENCHMARK_RUN_FAILED": {
+        "code": "BENCHMARK_RUN_FAILED",
+        "message": "Quality benchmark evaluation failed.",
+        "user_message": "质量基准评估失败。",
+    },
+    "BENCHMARK_DATASET_EMPTY": {
+        "code": "BENCHMARK_DATASET_EMPTY",
+        "message": "Quality benchmark dataset is empty.",
+        "user_message": "质量基准数据集为空。",
+    },
+    "IMPACT_ANALYSIS_FAILED": {
+        "code": "IMPACT_ANALYSIS_FAILED",
+        "message": "Change impact analysis failed.",
+        "user_message": "变更影响分析失败。",
+    },
 }
 
 

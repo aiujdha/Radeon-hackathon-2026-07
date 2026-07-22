@@ -395,3 +395,160 @@ class TaskExtractionResult(BaseModel):
 class ConfirmQueueFilter(BaseModel):
     """Filter for listing confirmation queue items."""
     status: str | None = Field(default=None, pattern="^(pending|accepted|ignored)$")
+
+
+# ---------------------------------------------------------------------------
+# Stage G — Risk & Knowledge Monitoring models
+# ---------------------------------------------------------------------------
+
+class RiskSeverityStr(StrEnum):
+    """Severity of a risk record."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class RiskLifecycleStr(StrEnum):
+    """Lifecycle state of a risk record."""
+    ACTIVE = "active"
+    ACKNOWLEDGED = "acknowledged"
+    RESOLVED = "resolved"
+    DISMISSED = "dismissed"
+    EXPIRED = "expired"
+
+
+class RiskRuleTypeStr(StrEnum):
+    """Risk rule type categories."""
+    NEAR_DEADLINE = "near_deadline"
+    OVERDUE = "overdue"
+    NO_EVIDENCE = "no_evidence"
+    ACCEPTANCE_GAP = "acceptance_gap"
+    DEPENDENCY_BLOCK = "dependency_block"
+    MATERIAL_CONFLICT = "material_conflict"
+    CUSTOM = "custom"
+
+
+class RiskRuleConfig(BaseModel):
+    """Risk rule configuration model."""
+    rule_id: str = Field(min_length=1, max_length=120)
+    rule_name: str = Field(default="", max_length=200)
+    rule_type: str = Field(default="custom", max_length=60)
+    description: str = Field(default="", max_length=2000)
+    severity: RiskSeverityStr = RiskSeverityStr.MEDIUM
+    config_json: str = Field(default="{}", max_length=8000)
+    enabled: bool = True
+
+
+class RiskRecordSummary(BaseModel):
+    """Summary of a risk record (API-friendly)."""
+    record_id: str = Field(min_length=1, max_length=120)
+    project_id: str = ""
+    risk_type: str = ""
+    entity_type: str = "task"
+    entity_id: str = ""
+    severity: RiskSeverityStr = RiskSeverityStr.MEDIUM
+    title: str = ""
+    description: str = ""
+    lifecycle: RiskLifecycleStr = RiskLifecycleStr.ACTIVE
+    source_material: str = ""
+    acknowledged_by: str | None = None
+    resolved_by: str | None = None
+    resolution_note: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+
+
+class RiskScanRequest(BaseModel):
+    """Request to trigger a project risk scan."""
+    project_id: str = Field(min_length=1, max_length=120)
+    scan_type: str = Field(default="full", pattern="^(full|incremental|task_only|material_only)$")
+    notify_external: bool = False
+
+
+class RiskScanSummary(BaseModel):
+    """Result of a risk scan."""
+    scan_id: str
+    project_id: str
+    total_rules: int = 0
+    new_risks: int = 0
+    active_risks: int = 0
+    total_risks: int = 0
+    status: str = "completed"
+    scan_type: str = "full"
+    risk_summary: dict = Field(default_factory=dict)
+    impact_summary: str = ""
+
+
+class DocVersionSummary(BaseModel):
+    """Document version record for API responses."""
+    id: int | None = None
+    project_id: str = ""
+    relative_path: str = ""
+    sha256: str = ""
+    parse_version: int = 1
+    index_version: int = 1
+    replaced_by: str | None = None
+    is_current: bool = True
+    last_seen_at: str = ""
+
+
+class ChangeImpactEntry(BaseModel):
+    """A single change impact entry."""
+    entity_type: str = "task"
+    entity_id: str = ""
+    entity_title: str = ""
+    impact_type: str = "reference_changed"
+    reason: str = ""
+    severity: str = "medium"
+    source_file: str = ""
+
+
+class ChangeImpactReport(BaseModel):
+    """Full change impact analysis report for API."""
+    project_id: str
+    changed_files: list[str] = Field(default_factory=list)
+    total_affected: int = 0
+    affected_tasks: list[ChangeImpactEntry] = Field(default_factory=list)
+    affected_reports: list[ChangeImpactEntry] = Field(default_factory=list)
+    generated_at: str = ""
+
+
+class QualityTestCaseModel(BaseModel):
+    """A single quality benchmark test case."""
+    test_case_id: str = Field(min_length=1, max_length=120)
+    category: str = "factual"
+    question: str = ""
+    expected_answer: str | None = None
+    expected_relevant: list[str] = Field(default_factory=list)
+    should_refuse: bool = False
+    conflict_docs: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+
+
+class QualityBenchmarkRun(BaseModel):
+    """Result of a quality benchmark evaluation run."""
+    benchmark_name: str = "default"
+    total_cases: int = 0
+    passed: int = 0
+    failed: int = 0
+    avg_recall: float = 0.0
+    avg_citation_accuracy: float = 0.0
+    avg_refusal_rate: float = 0.0
+    avg_latency_ms: float = 0.0
+    total_failure_rate: float = 0.0
+    run_at: str = ""
+    per_category: dict[str, dict[str, float]] = Field(default_factory=dict)
+
+
+class QualityMetricEntry(BaseModel):
+    """A single quality metric record."""
+    benchmark_name: str = "default"
+    test_case_id: str = ""
+    category: str = "factual"
+    recall_rate: float = 0.0
+    citation_accuracy: float = 0.0
+    refusal_rate: float = 0.0
+    latency_ms: float = 0.0
+    failure_rate: float = 0.0
+    run_at: str = ""
