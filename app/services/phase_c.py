@@ -1,8 +1,14 @@
-"""Project-scoped adapters for the Phase C task and report implementation."""
+"""Project-scoped adapters for the Phase C task and report implementation.
+
+Phase F integration: ``load_tasks()`` now prioritizes the SQLite task DB.
+When the DB contains confirmed (non-pending) tasks, those are used for
+report generation.  CSV / XLSX files remain the fallback.
+"""
 
 from __future__ import annotations
 
 import hashlib
+import logging
 from collections.abc import Awaitable
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -23,6 +29,7 @@ from app.security.paths import ensure_project_path, validate_project_id
 from app.tools.task_checker import _parse_date
 from app.tools.task_reader import TaskRecord, read_tasks
 
+logger = logging.getLogger(__name__)
 
 _DEFAULT_TASK_FILES = ("tasks.xlsx", "tasks.csv", "任务表.xlsx", "任务表.csv")
 
@@ -40,13 +47,58 @@ def load_tasks(
     settings: Settings | None = None,
     task_relative_path: str | None = None,
 ) -> list[Task]:
-    """Load a task list from the project's controlled ``source/`` directory.
+    """Load tasks for report generation.
 
-    ``task_relative_path`` is optional only when exactly one supported default
-    task filename exists at the source root. Arbitrary host paths are rejected.
+    Phase F priority:
+    1. SQLite task DB — confirmed tasks (not pending_confirmation, not cancelled)
+    2. Fallback to CSV / XLSX files in the project source directory
     """
     runtime_settings = settings or Settings()
     project_id = validate_project_id(project_id)
+
+    # ── 1. try SQLite task DB (Phase F) ─────────────────────────────────
+    try:
+        from app.services.task_lifecycle import TaskLifecycleService
+
+        db_path = Path(runtime_settings.sqlite_path) / "projects" / project_id / "tasks.db"
+        if db_path.exists():
+            svc = TaskLifecycleService(db_path)
+            confirmed_tasks = svc.list_tasks(project_id)
+            # Only use confirmed tasks for reports (exclude pending/cancelled)
+            report_ready = [
+                t for t in confirmed_tasks
+                if t.status not in ("pending_confirmation", "cancelled")
+            ]
+            if report_ready:
+                logger.info(
+                    "Phase F: loaded %d tasks from SQLite task DB for project %s",
+                    len(report_ready),
+                    project_id,
+                )
+                result: list[Task] = []
+                for t in report_ready:
+                    parsed: date | None = None
+                    if t.due_date:
+                        try:
+                            parsed = date.fromisoformat(t.due_date)
+                        except ValueError:
+                            pass
+                    result.append(
+                        Task(
+                            task_id=t.id,
+                            title=t.title,
+                            owner=t.owner,
+                            due_date=parsed,
+                            priority=t.priority,
+                            acceptance_criteria=t.acceptance_criteria,
+                            source_reference=t.source_ref,
+                        )
+                    )
+                return result
+    except Exception:
+        logger.debug("Phase F task DB not available, falling back to file-based tasks", exc_info=True)
+
+    # ── 2. fallback: CSV / XLSX files ───────────────────────────────────
     source_root = ensure_project_path(runtime_settings.project_root, project_id, "source")
     path = _resolve_task_path(source_root, runtime_settings.project_root, project_id, task_relative_path)
     records = read_tasks(path)

@@ -116,6 +116,49 @@ APP_ERROR_CODES: dict[str, dict[str, str]] = {
         "message": "Cleanup completed with some errors.",
         "user_message": "清理任务部分失败。",
     },
+    # ------------------------------------------------------------------
+    # Phase F — Task lifecycle
+    # ------------------------------------------------------------------
+    "TASK_NOT_FOUND": {
+        "code": "TASK_NOT_FOUND",
+        "message": "Task does not exist.",
+        "user_message": "任务不存在。",
+    },
+    "TASK_INVALID_TRANSITION": {
+        "code": "TASK_INVALID_TRANSITION",
+        "message": "Invalid task status transition.",
+        "user_message": "无效的任务状态变更。",
+    },
+    "TASK_CANCELLED_FINAL": {
+        "code": "TASK_CANCELLED_FINAL",
+        "message": "A cancelled task cannot be reactivated.",
+        "user_message": "已取消的任务无法重新激活。",
+    },
+    "CONFIRMATION_NOT_FOUND": {
+        "code": "CONFIRMATION_NOT_FOUND",
+        "message": "Confirmation request not found.",
+        "user_message": "确认请求不存在。",
+    },
+    "CONFIRMATION_ALREADY_PROCESSED": {
+        "code": "CONFIRMATION_ALREADY_PROCESSED",
+        "message": "Confirmation request already processed.",
+        "user_message": "该确认请求已被处理。",
+    },
+    "IMPORT_FILE_UNSUPPORTED": {
+        "code": "IMPORT_FILE_UNSUPPORTED",
+        "message": "Unsupported file format for import. Only CSV and XLSX are supported.",
+        "user_message": "不支持的文件格式，仅支持 CSV 和 XLSX。",
+    },
+    "IMPORT_PARSE_ERROR": {
+        "code": "IMPORT_PARSE_ERROR",
+        "message": "Failed to parse the import file.",
+        "user_message": "文件解析失败，请检查文件格式。",
+    },
+    "TASK_ALREADY_EXISTS": {
+        "code": "TASK_ALREADY_EXISTS",
+        "message": "A task with this ID already exists.",
+        "user_message": "该 ID 的任务已存在。",
+    },
 }
 
 
