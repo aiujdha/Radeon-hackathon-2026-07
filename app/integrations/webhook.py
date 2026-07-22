@@ -5,8 +5,11 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import ipaddress
 import sqlite3
 import time
+from urllib.parse import urlparse
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -34,6 +37,7 @@ VALID_EVENTS = frozenset(e.value for e in WebhookEvent)
 @dataclass
 class WebhookRegistration:
     id: str = ""
+    project_id: str = ""
     url: str = ""
     events: list[str] = field(default_factory=list)
     secret: str = ""
@@ -54,6 +58,7 @@ class WebhookRegistry:
             conn.execute(
                 """CREATE TABLE IF NOT EXISTS webhook_registrations (
                     id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL DEFAULT '',
                     url TEXT NOT NULL,
                     events TEXT NOT NULL DEFAULT '[]',
                     secret TEXT NOT NULL DEFAULT '',
@@ -62,6 +67,9 @@ class WebhookRegistry:
                     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )"""
             )
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(webhook_registrations)")}
+            if "project_id" not in columns:
+                conn.execute("ALTER TABLE webhook_registrations ADD COLUMN project_id TEXT NOT NULL DEFAULT ''")
             conn.execute(
                 """CREATE TABLE IF NOT EXISTS webhook_deliveries (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,7 +93,8 @@ class WebhookRegistry:
                 )"""
             )
 
-    def register(self, url: str, events: list[str], secret: str = "") -> WebhookRegistration:
+    def register(self, url: str, events: list[str], secret: str = "", project_id: str = "") -> WebhookRegistration:
+        _validate_webhook_url(url)
         events = [e for e in events if e in VALID_EVENTS]
         if not events:
             raise ValueError(f"Must specify at least one valid event from {sorted(VALID_EVENTS)}")
@@ -93,9 +102,9 @@ class WebhookRegistry:
         wid = _make_id("wh")
         with sqlite3.connect(self._db_path) as conn:
             conn.execute(
-                """INSERT INTO webhook_registrations (id, url, events, secret)
-                   VALUES (?, ?, ?, ?)""",
-                (wid, url, json.dumps(events), secret),
+                """INSERT INTO webhook_registrations (id, project_id, url, events, secret)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (wid, project_id, url, json.dumps(events), secret),
             )
         return self.get(wid)
 
@@ -203,7 +212,23 @@ class WebhookDispatcher:
 # ---------------------------------------------------------------------------
 
 def _make_id(prefix: str) -> str:
-    return f"{prefix}_{int(time.time() * 1000)}"
+    return f"{prefix}_{uuid.uuid4().hex}"
+
+
+def _validate_webhook_url(url: str) -> None:
+    """Reject non-HTTP and obviously private/internal webhook targets."""
+    parsed = urlparse(url)
+    if parsed.scheme not in {"https", "http"} or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError("Webhook URL must be an absolute HTTP(S) URL without credentials")
+    host = parsed.hostname.rstrip(".").lower()
+    if host == "localhost" or host.endswith(".localhost"):
+        raise ValueError("Webhook URL must not target localhost")
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return
+    if not address.is_global:
+        raise ValueError("Webhook URL must not target a private or reserved IP address")
 
 
 def _sign_payload(payload_str: str, secret: str) -> str:

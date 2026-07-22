@@ -30,6 +30,13 @@ def _setup_project(client: TestClient) -> None:
     assert client.post(
         "/api/projects", json={"project_id": "demo-project", "name": "Demo"}
     ).status_code == 201
+    login = client.post("/auth/login", json={"username": "admin", "password": "admin123"})
+    assert login.status_code == 200
+    client.headers.update({"Authorization": f"Bearer {login.json()['access_token']}"})
+    user_id = client.get("/auth/me").json()["user_id"]
+    assert client.post(
+        "/projects/demo-project/members", json={"user_id": user_id, "role": "admin"}
+    ).status_code == 201
 
 
 # ---------------------------------------------------------------------------
@@ -174,6 +181,13 @@ def test_automation_task_list_runs(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Automation Task API — Integration Tests
 # ---------------------------------------------------------------------------
+
+
+def test_api_automation_task_requires_authentication(tmp_path: Path) -> None:
+    """Automation task APIs do not expose project data to anonymous callers."""
+    app = create_app(_settings(tmp_path))
+    with TestClient(app) as client:
+        assert client.get("/api/projects/demo-project/automation-tasks").status_code == 401
 
 
 def test_api_create_automation_task(tmp_path: Path) -> None:

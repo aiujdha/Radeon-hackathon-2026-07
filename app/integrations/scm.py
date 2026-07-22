@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -103,6 +104,19 @@ class SCMConnector(BaseConnector):
                     summary=f"Invalid or already-used confirmation_id: {confirmation_id}",
                 )
 
+            expected = json.loads(row["diff_json"])
+            submitted = {
+                "target": target,
+                "operation": operation,
+                "items": data.get("items", []),
+            }
+            if submitted != expected:
+                self._set_status(ConnectorStatus.FAILED)
+                return ConnectorResult(
+                    status=ConnectorStatus.FAILED,
+                    summary="Confirmation does not match the previewed SCM change",
+                )
+
             # Mark confirmed
             conn.execute(
                 "UPDATE scm_confirmations SET confirmed = 1 WHERE id = ?", (confirmation_id,)
@@ -151,7 +165,7 @@ class SCMConnector(BaseConnector):
 # ---------------------------------------------------------------------------
 
 def _make_id(prefix: str) -> str:
-    return f"{prefix}_{int(time.time() * 1000)}"
+    return f"{prefix}_{uuid.uuid4().hex}"
 
 
 def _now() -> str:

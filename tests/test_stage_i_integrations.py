@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings
+from app.main import create_app
 from app.integrations.base import BaseConnector, ConfirmationRequired, ConnectorResult, ConnectorStatus
 from app.integrations.email import EmailConnector
 from app.integrations.webhook import WebhookRegistry, WebhookDispatcher
@@ -33,6 +34,16 @@ def _settings(tmp_path: Path) -> Settings:
 # ---------------------------------------------------------------------------
 
 
+def test_integration_write_api_requires_authentication(tmp_path: Path) -> None:
+    """Integration write endpoints are not accessible without a bearer token."""
+    app = create_app(_settings(tmp_path))
+    with TestClient(app) as client:
+        response = client.post("/api/integrations/email/preview", json={
+            "project_id": "demo-project", "recipient": "user@example.com",
+        })
+    assert response.status_code == 401
+
+
 def test_email_connector_preview_and_execute(tmp_path: Path) -> None:
     """EmailConnector: preview_diff returns preview, execute sends (stub SMTP)."""
     connector = EmailConnector(db_path=str(tmp_path / "email.db"))
@@ -54,7 +65,7 @@ def test_email_connector_preview_and_execute(tmp_path: Path) -> None:
     assert "body_preview" in preview
 
     # execute with full original data (not preview dict)
-    result = connector.execute(data, confirmation_id="test-confirm")
+    result = connector.execute(data, confirmation_id=preview["confirmation_id"])
     # SMTP connection may fail if no server on localhost:1025,
     # but result status/contract is always valid
     assert hasattr(result, "status")
@@ -85,8 +96,8 @@ def test_email_rate_limiting(tmp_path: Path) -> None:
             "status": "ok",
             "summary": "ok",
         }
-        connector.preview_diff(data)
-        connector.execute(data, confirmation_id=f"cf-{i}")
+        preview = connector.preview_diff(data)
+        connector.execute(data, confirmation_id=preview["confirmation_id"])
 
     # 4th send on same domain should hit rate limit
     data4 = {
@@ -116,8 +127,8 @@ def test_email_audit_log(tmp_path: Path) -> None:
         "risk_level": "high",
         "description": "Critical bug",
     }
-    connector.preview_diff(data)
-    connector.execute(data, confirmation_id="cf-audit")
+    preview = connector.preview_diff(data)
+    connector.execute(data, confirmation_id=preview["confirmation_id"])
 
     audit = connector.audit()
     assert len(audit) >= 1

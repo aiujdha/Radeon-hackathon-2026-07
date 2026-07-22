@@ -46,7 +46,7 @@ Implement the connector abstraction, email, webhook, SCM integrations, token man
 - Status machine: active → paused → active (pause) | active → cancelled (delete).
 
 ### 8. API Routers
-- `app/api/integrations.py`: `POST /api/integrations/email/send`, `POST /api/integrations/webhook/register`, `POST /api/integrations/scm/commit`.
+- `app/api/integrations.py`: authenticated preview/execute pairs for email and SCM, plus project-scoped webhook registration.
 - `app/api/automation_tasks.py`: CRUD + pause/resume/dry-run for automation tasks.
 
 ### 9. Error Codes

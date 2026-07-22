@@ -7,6 +7,7 @@ import smtplib
 import sqlite3
 import threading
 import time
+import uuid
 from dataclasses import dataclass, field
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -39,6 +40,14 @@ class RateLimiter:
             bucket.append(now)
             self._buckets[key] = bucket
             return True
+
+    def can_allow(self, key: str) -> bool:
+        """Check a limit during preview without consuming a send allowance."""
+        now = time.time()
+        with self._lock:
+            bucket = [t for t in self._buckets.get(key, []) if now - t < self._window]
+            self._buckets[key] = bucket
+            return len(bucket) < self._max
 
     def reset(self) -> None:
         with self._lock:
@@ -119,6 +128,14 @@ class EmailConnector(BaseConnector):
                     created_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )"""
             )
+            conn.execute(
+                """CREATE TABLE IF NOT EXISTS email_confirmations (
+                    id TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    confirmed INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )"""
+            )
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -138,11 +155,9 @@ class EmailConnector(BaseConnector):
             raise ValueError("recipient is required for email")
 
         domain = recipient.split("@")[-1] if "@" in recipient else recipient
-        if not self._rate_limiter.allow(domain):
+        if not self._rate_limiter.can_allow(domain):
             raise ConfirmationRequired(
-                f"Rate limit reached for domain {domain}. "
-                f"Max {self._rate_limiter._max} emails/hour. "
-                f"Confirm retry by re-submitting after cooldown.",
+                f"Rate limit reached for domain {domain}. Max {self._rate_limiter._max} emails/hour.",
                 details={"domain": domain, "retry_after_seconds": 3600},
             )
 
@@ -156,11 +171,33 @@ class EmailConnector(BaseConnector):
             "body_preview": body_html[:200],
             "sender": data.get("sender", "noreply@office-agent.local"),
         }
+        confirmation_id = f"email_confirm_{uuid.uuid4().hex}"
+        with sqlite3.connect(self._db_path) as conn:
+            conn.execute(
+                "INSERT INTO email_confirmations (id, payload_json) VALUES (?, ?)",
+                (confirmation_id, json.dumps(data)),
+            )
+        diff["confirmation_id"] = confirmation_id
         self._set_status(ConnectorStatus.PREVIEW_READY)
         return diff
 
     def execute(self, data: dict[str, Any], confirmation_id: str, **kwargs: Any) -> ConnectorResult:
         self._set_status(ConnectorStatus.EXECUTING)
+
+        with sqlite3.connect(self._db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            confirmation = conn.execute(
+                "SELECT payload_json FROM email_confirmations WHERE id = ? AND confirmed = 0",
+                (confirmation_id,),
+            ).fetchone()
+            if confirmation is None:
+                self._set_status(ConnectorStatus.FAILED)
+                return ConnectorResult(ConnectorStatus.FAILED, "Invalid or already-used confirmation_id")
+            confirmed_data = json.loads(confirmation["payload_json"])
+            if confirmed_data != data:
+                self._set_status(ConnectorStatus.FAILED)
+                return ConnectorResult(ConnectorStatus.FAILED, "Confirmation does not match the previewed email")
+            conn.execute("UPDATE email_confirmations SET confirmed = 1 WHERE id = ?", (confirmation_id,))
 
         recipient = data.get("recipient", "")
         subject = data.get("subject", "Office Agent Report")
@@ -169,6 +206,10 @@ class EmailConnector(BaseConnector):
         template = REPORT_TEMPLATES.get(report_type, REPORT_TEMPLATES["task_report"])
         body_html = template.format_map({k: str(v) for k, v in data.items()})
         body_plain = data.get("body_plain", "")
+        domain = recipient.split("@")[-1] if "@" in recipient else recipient
+        if not self._rate_limiter.allow(domain):
+            self._set_status(ConnectorStatus.FAILED)
+            return ConnectorResult(ConnectorStatus.FAILED, f"Rate limit reached for domain {domain}")
 
         try:
             self._send_email(sender, recipient, subject, body_html, body_plain)

@@ -14,19 +14,19 @@ Stage I adds safe, auditable external integrations to the Office Agent. Every co
 ## User-Visible Behavior
 
 ### 1. Email Integration
-- `POST /api/integrations/email/send` sends a task report, risk alert, or project summary.
+- `POST /api/integrations/email/preview` creates a reviewed preview and one-time confirmation ID; `POST /api/integrations/email/execute` sends that exact confirmed payload.
 - Accepts `{type, project_id, recipient, subject, body, attachments[]}`.
 - Rate-limited: max 10 emails per hour per recipient domain.
 - Only confirmed, reviewed content is sent — no raw internal data.
 
 ### 2. Webhook Integration
-- `POST /api/integrations/webhook/register` registers an external callback URL.
+- `POST /api/integrations/webhook/register` registers an external callback URL for a project; it does not dispatch during registration and never returns the shared secret.
 - Subscribes to event types: `task_status_change`, `risk_lifecycle_change`, `project_member_change`.
 - Delivers JSON payloads with HMAC signature for verification.
 - Failed deliveries retry 3× with exponential backoff (5 s → 30 s → 300 s), then dead-letter.
 
 ### 3. SCM Integration
-- `POST /api/integrations/scm/commit` pushes a report or task list to Git/SCM.
+- `POST /api/integrations/scm/preview` and `POST /api/integrations/scm/execute` create and apply an exact confirmed SCM change.
 - Read-only sync first: fetch external state, preview diff.
 - Confirmed write-back: after user approval, commit/push.
 - Supports GitHub Issues and Jira as target types.

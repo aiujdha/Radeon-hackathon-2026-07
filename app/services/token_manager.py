@@ -6,9 +6,10 @@ Uses AES-256-GCM via cryptography. Tokens are scoped to service + project.
 from __future__ import annotations
 
 import base64
+import hashlib
 import os
 import sqlite3
-import time
+import uuid
 from typing import Any
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -19,9 +20,14 @@ class TokenManager:
 
     def __init__(self, db_path: str = ":memory:", secret: str | None = None) -> None:
         self._db_path = db_path
-        # Derive a 256-bit key from the secret
-        raw = (secret or os.urandom(32).hex()).encode()[:32].ljust(32, b"\x00")
-        self._aesgcm = AESGCM(raw)
+        # A randomly generated key would make persisted tokens unrecoverable
+        # after a restart.  Deployment must provide a stable secret instead.
+        key_material = secret or os.environ.get("PROJECTPACK_INTEGRATION_KEY")
+        if not key_material:
+            raise ValueError(
+                "TokenManager requires PROJECTPACK_INTEGRATION_KEY or an explicit secret"
+            )
+        self._aesgcm = AESGCM(hashlib.sha256(key_material.encode("utf-8")).digest())
         self._init_db()
 
     # ------------------------------------------------------------------
@@ -122,4 +128,4 @@ class TokenManager:
 
 
 def _make_id(prefix: str) -> str:
-    return f"{prefix}_{int(time.time() * 1000)}"
+    return f"{prefix}_{uuid.uuid4().hex}"

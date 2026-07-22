@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import time
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -111,6 +111,10 @@ class AutomationTaskService:
             raise KeyError(f"Automation task {task_id} not found")
         return _row_to_task(dict(row))
 
+    def project_id_for_task(self, task_id: str) -> str:
+        """Return a task's owning project without exposing task data first."""
+        return self.get(task_id).project_id
+
     def list_by_project(self, project_id: str) -> list[AutomationTask]:
         with sqlite3.connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
@@ -212,7 +216,7 @@ class AutomationTaskService:
 # ------------------------------------------------------------------
 
 def _make_id(prefix: str) -> str:
-    return f"{prefix}_{int(time.time() * 1000)}"
+    return f"{prefix}_{uuid.uuid4().hex}"
 
 
 def _now() -> str:
