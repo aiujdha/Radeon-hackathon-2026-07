@@ -99,9 +99,12 @@ class ChangeImpactAnalyzer:
     def _find_tasks_by_source_file(self, relative_path: str) -> list[ImpactEntry]:
         """Find tasks whose source_ref contains the given path."""
         entries: list[ImpactEntry] = []
+        task_table = self._task_table()
+        if task_table is None:
+            return entries
         try:
             cursor = self.conn.execute(
-                "SELECT id, title, status, source_ref FROM tasks WHERE project_id = ? AND source_ref LIKE ?",
+                f"SELECT id, title, status, source_ref FROM {task_table} WHERE project_id = ? AND source_ref LIKE ?",
                 (self.project_id, f"%{relative_path}%"),
             )
             for row in cursor.fetchall():
@@ -121,11 +124,14 @@ class ChangeImpactAnalyzer:
     def _find_tasks_by_evidence_file(self, relative_path: str) -> list[ImpactEntry]:
         """Find tasks whose evidence references point to the given path."""
         entries: list[ImpactEntry] = []
+        task_table = self._task_table()
+        if task_table is None:
+            return entries
         try:
             cursor = self.conn.execute(
-                """SELECT te.task_id, t.title, t.status
+                f"""SELECT te.task_id, t.title, t.status
                    FROM task_evidence te
-                   JOIN tasks t ON te.task_id = t.id AND te.project_id = t.project_id
+                   JOIN {task_table} t ON te.task_id = t.id AND te.project_id = t.project_id
                    WHERE te.project_id = ? AND te.evidence_path LIKE ?""",
                 (self.project_id, f"%{relative_path}%"),
             )
@@ -142,6 +148,17 @@ class ChangeImpactAnalyzer:
         except sqlite3.OperationalError:
             pass
         return entries
+
+    def _task_table(self) -> str | None:
+        rows = self.conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('task', 'tasks')"
+        ).fetchall()
+        names = {row[0] for row in rows}
+        if "task" in names:
+            return "task"
+        if "tasks" in names:
+            return "tasks"
+        return None
 
     def _find_reports_by_source_file(self, relative_path: str) -> list[ImpactEntry]:
         """Find reports (runs) that reference the given source file."""

@@ -551,6 +551,22 @@ class TestDocVersionManagement:
         diff = detect_file_changes(tmp_project_dir, ["new_file.md"], tmp_db)
         assert "new_file.md" in diff.new_files
 
+    def test_detect_changes_is_project_scoped_and_rejects_escape(self, tmp_db, tmp_project_dir):
+        from app.services.doc_version import (
+            compute_file_sha256, detect_file_changes, ensure_schema, record_file_version,
+        )
+        ensure_schema(tmp_db)
+        fp = tmp_project_dir / "project_plan.md"
+        record_file_version(tmp_db, "other-project", "project_plan.md", compute_file_sha256(fp))
+
+        scoped = detect_file_changes(
+            tmp_project_dir, ["project_plan.md"], tmp_db, project_id="this-project"
+        )
+        assert scoped.new_files == ["project_plan.md"]
+
+        with pytest.raises(ValueError, match="escapes project root"):
+            detect_file_changes(tmp_project_dir, ["../outside.md"], tmp_db, project_id="this-project")
+
     def test_change_log_recorded(self, tmp_db, tmp_project_dir):
         from app.services.doc_version import (
             record_file_version, compute_file_sha256, get_change_logs, ensure_schema,
@@ -1080,6 +1096,28 @@ class TestRiskScanner:
         r2 = scanner.run(ScannerConfig())
         # Second run should have fewer or equal new risks
         assert r2.new_risks <= r1.new_risks
+
+    def test_scanner_reads_phase_f_singular_task_table(self, tmp_db):
+        """The Stage G scanner must consume the actual Phase F task table."""
+        from app.schemas.task_sql import DDL
+        from app.services.risk_scanner import RiskScanner, ScannerConfig
+
+        tmp_db.executescript(DDL)
+        yesterday = (date.today() - timedelta(days=2)).isoformat()
+        tmp_db.execute(
+            """INSERT INTO task (id, project_id, title, due_date, status, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            ("phase-f-task", "proj-phase-f", "Overdue Phase F task", yesterday,
+             "not_started", datetime.now().isoformat(), datetime.now().isoformat()),
+        )
+        tmp_db.commit()
+
+        result = RiskScanner(tmp_db, "proj-phase-f").run(ScannerConfig())
+        assert result.new_risks >= 1
+        assert tmp_db.execute(
+            "SELECT COUNT(*) FROM risk_record WHERE project_id = ? AND risk_type = 'overdue'",
+            ("proj-phase-f",),
+        ).fetchone()[0] == 1
 
 
 # ============================================================================

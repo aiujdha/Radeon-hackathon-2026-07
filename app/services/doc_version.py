@@ -110,6 +110,8 @@ def detect_file_changes(
     project_root: Path,
     file_paths: list[str],
     conn_or_versions: sqlite3.Connection | dict[str, DocVersion],
+    *,
+    project_id: str | None = None,
 ) -> FileChangeDiff:
     """Compare current SHA-256 values against stored versions.
 
@@ -118,13 +120,19 @@ def detect_file_changes(
     """
     # Resolve stored state
     if isinstance(conn_or_versions, sqlite3.Connection):
-        stored: dict[str, DocVersion] = _load_current_versions(conn_or_versions)
+        stored: dict[str, DocVersion] = _load_current_versions(conn_or_versions, project_id)
     else:
         stored = conn_or_versions  # dict[str, DocVersion]
 
     diff = FileChangeDiff()
+    root = project_root.resolve()
     for rel_path in file_paths:
-        abs_path = project_root / rel_path
+        candidate = (root / rel_path).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError as error:
+            raise ValueError("file path escapes project root") from error
+        abs_path = candidate
         exists = abs_path.exists()
         current_hash = compute_file_sha256(abs_path) if exists else ""
         stored_entry = stored.get(rel_path)
@@ -143,11 +151,17 @@ def detect_file_changes(
     return diff
 
 
-def _load_current_versions(conn: sqlite3.Connection) -> dict[str, DocVersion]:
+def _load_current_versions(
+    conn: sqlite3.Connection, project_id: str | None = None
+) -> dict[str, DocVersion]:
     """Load current document versions from db into a dict keyed by relative_path."""
-    cursor = conn.execute(
-        "SELECT * FROM document_version WHERE is_current = 1"
-    )
+    if project_id is None:
+        cursor = conn.execute("SELECT * FROM document_version WHERE is_current = 1")
+    else:
+        cursor = conn.execute(
+            "SELECT * FROM document_version WHERE is_current = 1 AND project_id = ?",
+            (project_id,),
+        )
     rows = cursor.fetchall()
     result: dict[str, DocVersion] = {}
     for row in rows:

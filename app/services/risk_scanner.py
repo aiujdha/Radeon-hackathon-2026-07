@@ -125,12 +125,15 @@ class RiskScanner:
             self.conn.commit()
 
     def _load_tasks(self) -> list[TaskSnapshot]:
-        """Load tasks from the SQLite tasks table."""
+        """Load tasks from the Phase F ``task`` table (or legacy ``tasks``)."""
         tasks: list[TaskSnapshot] = []
+        task_table = self._task_table()
+        if task_table is None:
+            return tasks
         try:
             cursor = self.conn.execute(
                 "SELECT id, title, owner, due_date, priority, acceptance_criteria, status, dependencies, source_ref "
-                "FROM tasks WHERE project_id = ?",
+                f"FROM {task_table} WHERE project_id = ?",
                 (self.project_id,),
             )
             cols = ["task_id", "title", "owner", "due_date", "priority",
@@ -176,6 +179,18 @@ class RiskScanner:
         except sqlite3.OperationalError:
             pass
         return tasks
+
+    def _task_table(self) -> str | None:
+        """Prefer the Phase F table name while retaining legacy compatibility."""
+        rows = self.conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('task', 'tasks')"
+        ).fetchall()
+        names = {row[0] for row in rows}
+        if "task" in names:
+            return "task"
+        if "tasks" in names:
+            return "tasks"
+        return None
 
     def _load_rules(self) -> list[RiskRule]:
         """Load enabled risk rules from DB."""
