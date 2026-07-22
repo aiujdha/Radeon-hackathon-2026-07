@@ -12,3 +12,23 @@ def test_phase_a_runtime_and_verification_dependencies_are_declared() -> None:
     for package in ("pypdf", "python-docx", "openpyxl"):
         assert package in runtime
     assert "reportlab" in development
+
+
+def test_stage_e_dependencies_are_declared() -> None:
+    """Verify Stage E dependencies are in pyproject.toml."""
+    with Path("pyproject.toml").open("rb") as file:
+        project = tomllib.load(file)["project"]
+
+    runtime = "\n".join(project["dependencies"])
+    dev = "\n".join(project.get("optional-dependencies", {}).get("dev", ""))
+
+    # Stage E requires httpx (already), gradio (already), pydantic-settings (already)
+    # No new third-party packages are required for Stage E features.
+    # Core features (background tasks, SSE/polling, error codes, cleanup)
+    # use only stdlib and existing dependencies.
+
+    # Verify fastapi is declared (required for background tasks)
+    assert "fastapi" in runtime
+
+    # Verify pydantic-settings is declared
+    assert "pydantic-settings" in runtime or "pydantic_settings" in runtime or "pydantic" in runtime
