@@ -35,6 +35,46 @@ class RunStatus(StrEnum):
     WAITING_CONFIRMATION = "waiting_confirmation"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+# ---------------------------------------------------------------------------
+# Stage E — Step timing & progress models
+# ---------------------------------------------------------------------------
+
+
+class StepDef(StrEnum):
+    """Named phases tracked by the controlled runner."""
+    PARSE = "parse"
+    EMBED = "embed"
+    INDEX = "index"
+    RETRIEVE = "retrieve"
+    RULES = "rules"
+    MODEL_GENERATE = "model_generate"
+    FILE_WRITE = "file_write"
+
+
+class StepTiming(BaseModel):
+    """Timing record for a single pipeline step."""
+    step: StepDef
+    started_at: datetime
+    finished_at: datetime | None = None
+    elapsed_ms: float | None = None
+    current_file: str | None = Field(default=None, max_length=500)
+    error: str | None = Field(default=None, max_length=4000)
+
+
+class RunProgress(BaseModel):
+    """Live progress snapshot returned via polling / SSE."""
+    run_id: str
+    status: RunStatus
+    current_step: int = Field(default=0, ge=0, le=8)
+    current_step_name: str = ""
+    percentage: int = Field(default=0, ge=0, le=100)
+    current_file: str | None = Field(default=None, max_length=500)
+    error_summary: str | None = Field(default=None, max_length=4000)
+    timing_by_step: list[StepTiming] = Field(default_factory=list)
+    retry_count: int = Field(default=0, ge=0)
 
 
 class ProjectCreate(BaseModel):
@@ -94,6 +134,12 @@ class RunState(BaseModel):
     completed_at: datetime | None = None
     error: str | None = Field(default=None, max_length=4000)
     artifacts: dict[str, str] = Field(default_factory=dict)
+    # Stage E fields
+    timing_by_step: list[StepTiming] = Field(default_factory=list)
+    retry_count: int = Field(default=0, ge=0)
+    cancel_requested: bool = Field(default=False)
+    current_file: str | None = Field(default=None, max_length=500)
+    total_steps: int = Field(default=8, ge=1, le=20)
 
     @field_validator("project_id")
     @classmethod
@@ -110,3 +156,64 @@ class ReportDraft(BaseModel):
     @classmethod
     def check_project_id(cls, value: str) -> str:
         return validate_project_id(value)
+
+
+# ---------------------------------------------------------------------------
+# Stage E — File upload & validation models
+# ---------------------------------------------------------------------------
+
+ALLOWED_EXTENSIONS: set[str] = {
+    ".md", ".txt", ".pdf", ".docx", ".xlsx", ".csv",
+}
+
+ALLOWED_MIME_TYPES: set[str] = {
+    "text/plain",
+    "text/markdown",
+    "text/x-markdown",
+    "text/csv",
+    "application/vnd.ms-excel",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+
+EXTENSION_TO_MIME: dict[str, list[str]] = {
+    ".md": ["text/markdown", "text/x-markdown", "text/plain"],
+    ".txt": ["text/plain"],
+    ".pdf": ["application/pdf"],
+    ".docx": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+    ".xlsx": ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+    ".csv": ["text/csv", "text/plain", "application/vnd.ms-excel"],
+}
+
+MAX_UPLOAD_SIZE_MB_DEFAULT: int = 50
+
+
+class FileValidationError(BaseModel):
+    """Structured file validation error."""
+    filename: str
+    error_code: str
+    message: str
+    user_message: str
+
+
+class UploadResult(BaseModel):
+    """Result of a file upload operation."""
+    relative_path: str
+    size_bytes: int
+    sha256: str | None = None
+    mime_detected: str | None = None
+    extension_matched: bool = True
+    virus_scan_status: str = "skipped"
+
+
+# ---------------------------------------------------------------------------
+# Stage E — Error codes
+# ---------------------------------------------------------------------------
+
+class ErrorDetail(BaseModel):
+    """Structured error returned by API endpoints."""
+    error_code: str
+    message: str
+    user_message: str = ""
+    details: dict[str, str] = Field(default_factory=dict)
