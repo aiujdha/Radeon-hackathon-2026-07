@@ -552,3 +552,190 @@ class QualityMetricEntry(BaseModel):
     latency_ms: float = 0.0
     failure_rate: float = 0.0
     run_at: str = ""
+
+
+# ===========================================================================
+# Phase H — Team Collaboration Workspace models
+# ===========================================================================
+
+class ProjectRole(StrEnum):
+    ADMIN = "admin"
+    PM = "pm"
+    MEMBER = "member"
+    GUEST = "guest"
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=1, max_length=256)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user_id: str
+    username: str
+    display_name: str
+
+
+class UserProfile(BaseModel):
+    user_id: str
+    username: str
+    display_name: str
+    is_active: bool = True
+
+
+class ProjectMemberEntry(BaseModel):
+    id: str = ""
+    project_id: str
+    user_id: str
+    username: str = ""
+    display_name: str = ""
+    role: ProjectRole
+    joined_at: str = ""
+
+
+class ProjectMemberAdd(BaseModel):
+    user_id: str = Field(min_length=1, max_length=120)
+    role: ProjectRole = ProjectRole.MEMBER
+
+
+class ProjectOverview(BaseModel):
+    project_id: str
+    project_name: str = ""
+    task_stats: dict = Field(default_factory=dict)
+    risk_stats: dict = Field(default_factory=dict)
+    pending_confirmations: int = 0
+    recent_doc_changes: list[dict] = Field(default_factory=list)
+    recent_runs: list[dict] = Field(default_factory=list)
+
+
+class TaskBoardQuery(BaseModel):
+    status: str | None = None
+    owner: str | None = None
+    priority: str | None = None
+    due_before: str | None = None
+    due_after: str | None = None
+    sort_by: str = "due_date"
+    sort_order: str = "asc"
+    group_by: str | None = None  # owner, status, priority
+    search: str | None = Field(default=None, max_length=200)
+
+
+class TaskBoardCard(BaseModel):
+    task_id: str
+    title: str
+    owner: str | None = None
+    due_date: str | None = None
+    priority: str | None = None
+    status: str
+    comment_count: int = 0
+    risk_level: str = "low"
+
+
+class TaskBoardResponse(BaseModel):
+    project_id: str
+    groups: dict[str, list[TaskBoardCard]] = Field(default_factory=dict)  # grouped view
+    total_count: int = 0
+    filters_applied: dict = Field(default_factory=dict)
+
+
+class RiskAssignmentRequest(BaseModel):
+    risk_id: str = Field(min_length=1, max_length=120)
+    assignee_user_id: str = Field(min_length=1, max_length=120)
+
+
+class RiskLifecycleUpdate(BaseModel):
+    action: str = Field(pattern="^(acknowledge|resolve|dismiss|reopen)$")
+    note: str = Field(default="", max_length=2000)
+    actor: str = Field(default="", max_length=120)
+
+
+class RiskCenterEntry(BaseModel):
+    record_id: str
+    project_id: str = ""
+    title: str = ""
+    severity: str = "medium"
+    lifecycle: str = "active"
+    description: str = ""
+    assigned_to: str | None = None
+    assignee_name: str | None = None
+    comment_count: int = 0
+    created_at: str = ""
+    updated_at: str = ""
+
+
+class ReportDraftEntry(BaseModel):
+    id: str = ""
+    project_id: str
+    title: str
+    content_md: str = ""
+    version: int = 1
+    status: str = "draft"
+    author_id: str = ""
+    author_name: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+
+
+class ReportDraftCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=500)
+    content_md: str = Field(default="", max_length=100_000)
+
+
+class ReportDraftUpdate(BaseModel):
+    title: str | None = Field(default=None, max_length=500)
+    content_md: str | None = Field(default=None, max_length=100_000)
+
+
+class ReportApprovalRequest(BaseModel):
+    decision: str = Field(pattern="^(approved|rejected|request_changes)$")
+    comment: str = Field(default="", max_length=2000)
+
+
+class ReportExportFormat(StrEnum):
+    PDF = "pdf"
+    DOCX = "docx"
+
+
+class CommentCreate(BaseModel):
+    entity_type: str = Field(pattern="^(task|risk|report_section|report)$")
+    entity_id: str = Field(min_length=1, max_length=120)
+    body: str = Field(min_length=1, max_length=8000)
+    parent_id: str | None = Field(default=None, max_length=120)
+    mentions: list[str] = Field(default_factory=list, max_length=50)
+
+
+class CommentUpdate(BaseModel):
+    body: str = Field(min_length=1, max_length=8000)
+
+
+class CommentEntry(BaseModel):
+    id: str = ""
+    project_id: str
+    entity_type: str
+    entity_id: str
+    author_id: str = ""
+    author_name: str = ""
+    parent_id: str | None = None
+    body: str
+    is_resolved: bool = False
+    mentions: list[str] = Field(default_factory=list)
+    replies: list["CommentEntry"] = Field(default_factory=list)
+    created_at: str = ""
+    updated_at: str = ""
+
+
+class NotificationEntry(BaseModel):
+    id: str = ""
+    recipient_id: str = ""
+    kind: str
+    title: str
+    body: str = ""
+    link: str = ""
+    is_read: bool = False
+    created_at: str = ""
+
+
+class NotificationBatchRead(BaseModel):
+    notification_ids: list[str] = Field(min_length=1, max_length=200)
