@@ -172,6 +172,28 @@ def test_get_task_404(tmp_path: Path) -> None:
         assert resp.status_code == 404
 
 
+def test_task_routes_reject_unregistered_or_invalid_project(tmp_path: Path) -> None:
+    """Task routes must not open a database for an arbitrary path segment."""
+    app = create_app(_settings(tmp_path))
+    with TestClient(app) as client:
+        missing = client.get("/api/projects/missing-project/tasks")
+        assert missing.status_code == 404
+        assert missing.json()["detail"]["error_code"] == "PROJECT_NOT_FOUND"
+
+        invalid = client.get("/api/projects/INVALID/tasks")
+        assert invalid.status_code == 422
+        assert invalid.json()["detail"]["error_code"] == "PROJECT_ID_INVALID"
+
+
+def test_task_history_404_for_unknown_task(tmp_path: Path) -> None:
+    """An unknown task must not be represented as an empty history."""
+    app = create_app(_settings(tmp_path))
+    with TestClient(app) as client:
+        _setup_project(client)
+        resp = client.get("/api/projects/demo-project/tasks/nonexistent-id/history")
+        assert resp.status_code == 404
+
+
 def test_update_task_404(tmp_path: Path) -> None:
     """Update non-existent task returns 404."""
     app = create_app(_settings(tmp_path))

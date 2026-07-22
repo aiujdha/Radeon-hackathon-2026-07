@@ -271,6 +271,7 @@ class TaskLifecycleService:
 
     def get_task_history(self, project_id: str, task_id: str) -> list[TaskChangeRecord]:
         """Return all status change events for a task."""
+        self.get_task(project_id, task_id)
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT * FROM task_change WHERE task_id = ? AND project_id = ? ORDER BY changed_at",

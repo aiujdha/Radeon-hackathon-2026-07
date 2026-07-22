@@ -26,7 +26,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Request, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, Request, HTTPException, UploadFile, File, Form
 
 from app.observability.error_codes import get_error
 from app.schemas.models import (
@@ -46,10 +46,27 @@ from app.schemas.models import (
     OperationAuditRecord,
 )
 from app.services.task_lifecycle import TaskLifecycleService
+from app.services.projects import ProjectNotFoundError, get_project
+from app.security.paths import validate_project_id
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["Phase F — Task Lifecycle"])
+def _validate_project_scope(project_id: str, request: Request) -> None:
+    """Reject malformed or unregistered projects before opening a task DB."""
+    settings = request.app.state.settings
+    try:
+        validate_project_id(project_id)
+        get_project(settings.project_root, settings.output_root, project_id)
+    except ValueError as error:
+        raise _err("PROJECT_ID_INVALID", 422) from error
+    except ProjectNotFoundError as error:
+        raise _err("PROJECT_NOT_FOUND", 404) from error
+
+
+router = APIRouter(
+    tags=["Phase F — Task Lifecycle"],
+    dependencies=[Depends(_validate_project_scope)],
+)
 
 
 # ---------------------------------------------------------------------------
