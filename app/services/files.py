@@ -43,11 +43,8 @@ def _detect_mime(content: bytes, filename: str) -> str:
     Returns a lowercase MIME type string.
     """
     suffix = Path(filename).suffix.lower()
-    mtype, _ = mimetypes.guess_type(filename)
-    if mtype:
-        return mtype.lower()
-
-    # Heuristic: check file magic bytes
+    # Content signatures must win over the filename.  Otherwise a PDF renamed
+    # to ``.txt`` would be accepted as text/plain.
     if content.startswith(b"\x25\x50\x44\x46"):
         return "application/pdf"
     if content.startswith(b"PK\x03\x04"):
@@ -57,8 +54,15 @@ def _detect_mime(content: bytes, filename: str) -> str:
         if suffix == ".docx":
             return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         return "application/zip"
-    if content.startswith(b"\xef\xbb\xbf") or content[:1].isascii():
+    try:
+        content.decode("utf-8")
         return "text/plain"
+    except UnicodeDecodeError:
+        pass
+
+    mtype, _ = mimetypes.guess_type(filename)
+    if mtype:
+        return mtype.lower()
 
     return "application/octet-stream"
 
@@ -140,8 +144,14 @@ def validate_file(filename: str, content: bytes, settings: Settings) -> None:
 
     expected_mimes = EXTENSION_TO_MIME.get(suffix, [])
     if expected_mimes and detected_mime not in expected_mimes:
-        # Log warning but don't block for now (some text files may be "application/octet-stream")
-        pass
+        raise UploadValidationError(
+            FileValidationError(
+                filename=name,
+                error_code="FILE_MIME_MISMATCH",
+                message=f"MIME type '{detected_mime}' does not match extension '{suffix}'",
+                user_message="文件内容与扩展名不匹配。",
+            )
+        )
 
     # 6. Virus scan interface placeholder
     if settings.virus_scan_enabled:
@@ -158,7 +168,6 @@ def _run_virus_scan(filename: str, content: bytes, settings: Settings) -> None:
             [*settings.virus_scan_command, filename],
             input=content,
             capture_output=True,
-            text=True,
             timeout=30,
         )
         if result.returncode != 0:

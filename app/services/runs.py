@@ -195,8 +195,17 @@ async def _background_execute(
     """Internal async runner. Writes progress to disk after every step."""
     state = get_run(settings, project_id, run_id)
 
+    def _cancel_requested() -> bool:
+        try:
+            return get_run(settings, project_id, run_id).cancel_requested
+        except RunNotFoundError:
+            return True
+
     def _persist(run_state: RunState) -> None:
         try:
+            current = get_run(settings, project_id, run_id)
+            if current.cancel_requested and not run_state.cancel_requested:
+                run_state = run_state.model_copy(update={"cancel_requested": True})
             save_run(settings, run_state)
         except Exception:
             pass  # save failure must not crash the pipeline
@@ -212,8 +221,11 @@ async def _background_execute(
         AuditTrail(settings.log_root, state.run_id),
         max_steps=settings.agent_max_steps,
         progress_callback=_persist,
+        cancel_check=_cancel_requested,
     )
-    completed = runner.run(state)
+    # The pipeline uses synchronous parsing, indexing and model calls.  Keep
+    # it off the ASGI event loop so progress and cancellation remain available.
+    completed = await asyncio.to_thread(runner.run, state)
     completed = completed.model_copy(update={"artifacts": artifacts.summary()})
     return save_run(settings, completed)
 

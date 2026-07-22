@@ -176,9 +176,18 @@ def build_workbench(api_url: str = DEFAULT_API_URL) -> gr.Blocks:
         run_id = queued["run_id"]
         # Trigger background execution
         client.request("POST", f"/api/projects/{project_id}/runs/{run_id}/execute")
-        # Poll until done
-        time.sleep(2)
-        result = client.request("GET", f"/api/projects/{project_id}/runs/{run_id}")
+        # A real model run can take longer than two seconds. Do not fetch its
+        # artifacts until the background run reaches a terminal state.
+        result: dict[str, Any] | None = None
+        for _ in range(90):
+            result = client.request("GET", f"/api/projects/{project_id}/runs/{run_id}")
+            if result["status"] in {"completed", "failed", "cancelled"}:
+                break
+            time.sleep(2)
+        if result is None or result["status"] not in {"completed", "failed", "cancelled"}:
+            raise gr.Error("Run is still in progress; use Run history to monitor it.")
+        if result["status"] != "completed":
+            return result, {"evaluations": []}, "## Downloads\nNo artifacts: run did not complete.", _fmt_run_list(client)
         details = client.request("GET", f"/api/projects/{project_id}/runs/{run_id}/artifacts/result")
         links = []
         for label, artifact in (("Markdown report", "report"), ("Risk CSV", "risk_csv"), ("Next-week plan", "next_week_plan")):

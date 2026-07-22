@@ -239,7 +239,8 @@ def test_execute_already_executed_run_returns_409(tmp_path: Path) -> None:
         rid = created["run_id"]
 
         # Execute once
-        client.post(f"/api/projects/demo-project/runs/{rid}/execute")
+        first = client.post(f"/api/projects/demo-project/runs/{rid}/execute")
+        assert first.status_code == 202
 
         # Wait briefly for background task
         import time
@@ -248,7 +249,7 @@ def test_execute_already_executed_run_returns_409(tmp_path: Path) -> None:
         # Try to execute again
         resp = client.post(f"/api/projects/demo-project/runs/{rid}/execute")
         # Should be 409 (already executed) or the run is still running
-        assert resp.status_code in {409, 200}
+        assert resp.status_code == 409
 
 
 # ── API: download artifact still works ─────────────────────────────────────
