@@ -54,6 +54,9 @@ async def get_current_user(
     if user is None:
         err = get_error("USER_NOT_FOUND")
         raise HTTPException(status_code=401, detail=err)
+    if not user["is_active"]:
+        err = get_error("AUTH_TOKEN_INVALID")
+        raise HTTPException(status_code=401, detail=err)
     return user
 
 

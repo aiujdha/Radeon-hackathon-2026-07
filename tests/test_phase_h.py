@@ -198,6 +198,21 @@ class TestAuth:
         r = client.get("/auth/me", headers={"Authorization": "Bearer bad"})
         assert r.status_code == 401
 
+    def test_disabled_user_token_is_rejected(self, client, test_settings, auth_headers_admin):
+        """Disabling an account must invalidate its already-issued token."""
+        import sqlite3
+
+        conn = sqlite3.connect(str(test_settings.sqlite_path))
+        try:
+            conn.execute("UPDATE user_account SET is_active = 0 WHERE username = 'admin'")
+            conn.commit()
+            response = client.get("/auth/me", headers=auth_headers_admin)
+            assert response.status_code == 401
+        finally:
+            conn.execute("UPDATE user_account SET is_active = 1 WHERE username = 'admin'")
+            conn.commit()
+            conn.close()
+
 
 # ============================================================================
 # H.2 — 项目角色 & 权限测试
@@ -326,6 +341,19 @@ class TestTaskBoard:
         assert "groups" in data
         assert "total_count" in data
         assert "filters_applied" in data
+
+    def test_board_reads_phase_f_task_database(self, client, project_id, auth_headers_member, test_settings):
+        """The board must use the same SQLite task DB as the Phase F API."""
+        from app.schemas.models import TaskCreate
+        from app.services.task_lifecycle import TaskLifecycleService
+
+        task_db = test_settings.sqlite_path.parent / "projects" / project_id / "tasks.db"
+        TaskLifecycleService(task_db).create_task(
+            project_id, TaskCreate(title="Board integration task", status="not_started")
+        )
+        response = client.get(f"/projects/{project_id}/board/tasks", headers=auth_headers_member)
+        assert response.status_code == 200
+        assert response.json()["total_count"] >= 1
 
     def test_board_with_status_filter(self, client, project_id, auth_headers_member):
         r = client.get(f"/projects/{project_id}/board/tasks?status=open", headers=auth_headers_member)

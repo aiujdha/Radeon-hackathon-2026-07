@@ -18,6 +18,12 @@ from app.security.permissions import get_current_user, require_project_role
 router = APIRouter(prefix="/projects/{project_id}", tags=["overview"])
 
 
+def _project_db_path(settings, project_id: str) -> Path:
+    sqlite_path = Path(settings.sqlite_path)
+    sqlite_root = sqlite_path if sqlite_path.is_dir() else sqlite_path.parent
+    return sqlite_root / "projects" / project_id / "tasks.db"
+
+
 def _connect_rows(db_path: str) -> list | None:
     """Try connecting to a SQLite DB. Returns rows (via fetchall) or None."""
     if not Path(db_path).exists():
@@ -55,7 +61,7 @@ async def get_project_overview(
 
     # Task stats — read from tasks.db
     task_stats: dict[str, int] = {}
-    task_db = project_dir / "tasks.db"
+    task_db = _project_db_path(settings, project_id)
     if task_db.exists():
         conn = sqlite3.connect(str(task_db))
         conn.row_factory = sqlite3.Row
@@ -68,7 +74,7 @@ async def get_project_overview(
 
     # Risk stats — read from risks.db
     risk_stats: dict[str, int] = {}
-    risk_db = project_dir / "risks.db"
+    risk_db = task_db
     if risk_db.exists():
         conn = sqlite3.connect(str(risk_db))
         conn.row_factory = sqlite3.Row
@@ -97,7 +103,7 @@ async def get_project_overview(
             conn.close()
 
     # Recent doc changes
-    docs_db = project_dir / "docs.db"
+    docs_db = task_db
     recent_doc_changes: list[dict] = []
     if docs_db.exists():
         conn = sqlite3.connect(str(docs_db))

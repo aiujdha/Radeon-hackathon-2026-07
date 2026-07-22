@@ -17,6 +17,12 @@ from app.services.task_lifecycle import TaskLifecycleService
 router = APIRouter(prefix="/projects/{project_id}/board", tags=["task-board"])
 
 
+def _task_db_path(settings, project_id: str) -> Path:
+    sqlite_path = Path(settings.sqlite_path)
+    sqlite_root = sqlite_path if sqlite_path.is_dir() else sqlite_path.parent
+    return sqlite_root / "projects" / project_id / "tasks.db"
+
+
 @router.get("/tasks", response_model=TaskBoardResponse, dependencies=[Depends(require_project_role("guest"))])
 async def get_task_board(
     project_id: str,
@@ -46,7 +52,7 @@ async def get_task_board(
     """
     # Locate the project's task DB
     settings = request.app.state.settings
-    task_db = Path(settings.project_root) / project_id / "tasks.db"
+    task_db = _task_db_path(settings, project_id)
 
     # Always report filters that were requested
     filters_applied: dict = {}

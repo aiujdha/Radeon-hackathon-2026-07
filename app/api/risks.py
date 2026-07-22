@@ -18,6 +18,13 @@ from app.security.permissions import get_current_user, require_project_role
 router = APIRouter(prefix="/projects/{project_id}/risks", tags=["risks"])
 
 
+def _risk_db_path(settings, project_id: str):
+    from pathlib import Path
+    sqlite_path = Path(settings.sqlite_path)
+    sqlite_root = sqlite_path if sqlite_path.is_dir() else sqlite_path.parent
+    return sqlite_root / "projects" / project_id / "tasks.db"
+
+
 @router.get("", response_model=list[RiskCenterEntry])
 async def list_risks(
     project_id: str,
@@ -30,7 +37,7 @@ async def list_risks(
     """List risk records for a project, with optional severity/lifecycle filters."""
     from pathlib import Path
     settings = request.app.state.settings
-    risk_db = Path(settings.project_root) / project_id / "risks.db"
+    risk_db = _risk_db_path(settings, project_id)
     main_db = request.app.state.db_path
 
     results: list[dict] = []
@@ -39,6 +46,10 @@ async def list_risks(
         conn = sqlite3.connect(str(risk_db))
         conn.row_factory = sqlite3.Row
         try:
+            # Phase G tables share the project task DB and may not have been
+            # initialised until the first monitoring scan.
+            from app.services.risk_scanner import ensure_all
+            ensure_all(conn)
             where = "1=1"
             params: list = []
             if severity:
@@ -109,7 +120,7 @@ async def assign_risk(
     """Assign a risk record to a user for handling."""
     from pathlib import Path
     settings = request.app.state.settings
-    risk_db = Path(settings.project_root) / project_id / "risks.db"
+    risk_db = _risk_db_path(settings, project_id)
     main_db = request.app.state.db_path
 
     # Verify risk exists in risk DB
@@ -179,7 +190,7 @@ async def update_risk_lifecycle(
     """
     from pathlib import Path
     settings = request.app.state.settings
-    risk_db = Path(settings.project_root) / project_id / "risks.db"
+    risk_db = _risk_db_path(settings, project_id)
     main_db = request.app.state.db_path
 
     valid_transitions = {
