@@ -285,6 +285,64 @@ APP_ERROR_CODES: dict[str, dict[str, str]] = {
         "message": "Invalid risk lifecycle transition.",
         "user_message": "无效的风险生命周期变更。",
     },
+    # ------------------------------------------------------------------
+    # Stage I — External Integrations
+    # ------------------------------------------------------------------
+    "INTEGRATION_EMAIL_FAILED": {
+        "code": "INTEGRATION_EMAIL_FAILED",
+        "message": "Email delivery failed.",
+        "user_message": "邮件发送失败。",
+    },
+    "INTEGRATION_WEBHOOK_FAILED": {
+        "code": "INTEGRATION_WEBHOOK_FAILED",
+        "message": "Webhook delivery failed.",
+        "user_message": "Webhook 投递失败。",
+    },
+    "INTEGRATION_SCM_FAILED": {
+        "code": "INTEGRATION_SCM_FAILED",
+        "message": "SCM operation failed.",
+        "user_message": "SCM 操作失败。",
+    },
+    "INTEGRATION_RATE_LIMITED": {
+        "code": "INTEGRATION_RATE_LIMITED",
+        "message": "Integration rate limit exceeded.",
+        "user_message": "集成调用频率超限。",
+    },
+    "INTEGRATION_CONFIRMATION_REQUIRED": {
+        "code": "INTEGRATION_CONFIRMATION_REQUIRED",
+        "message": "Human confirmation is required for this action.",
+        "user_message": "该操作需要人工确认。",
+    },
+    "AUTOMATION_TASK_NOT_FOUND": {
+        "code": "AUTOMATION_TASK_NOT_FOUND",
+        "message": "Automation task does not exist.",
+        "user_message": "自动化任务不存在。",
+    },
+    "AUTOMATION_TASK_ALREADY_PAUSED": {
+        "code": "AUTOMATION_TASK_ALREADY_PAUSED",
+        "message": "Automation task is already paused.",
+        "user_message": "自动化任务已暂停。",
+    },
+    "AUTOMATION_TASK_ALREADY_ACTIVE": {
+        "code": "AUTOMATION_TASK_ALREADY_ACTIVE",
+        "message": "Automation task is already active.",
+        "user_message": "自动化任务已在运行中。",
+    },
+    "TOKEN_NOT_FOUND": {
+        "code": "TOKEN_NOT_FOUND",
+        "message": "Integration token not found.",
+        "user_message": "集成令牌不存在。",
+    },
+    "TOKEN_INVALID": {
+        "code": "TOKEN_INVALID",
+        "message": "Integration token is invalid or expired.",
+        "user_message": "集成令牌无效或已过期。",
+    },
+    "TOKEN_ENCRYPTION_FAILED": {
+        "code": "TOKEN_ENCRYPTION_FAILED",
+        "message": "Token encryption/decryption failed.",
+        "user_message": "令牌加解密失败。",
+    },
 }
 
 

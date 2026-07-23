@@ -24,6 +24,10 @@ from app.api.reports import router as reports_router
 from app.api.comments import router as comments_router
 from app.api.notifications import router as notifications_router
 
+# Stage I routers
+from app.api.integrations import router as integrations_router
+from app.api.automation_tasks import router as automation_tasks_router
+
 from app.config import Settings
 from app.services.cleanup import run_cleanup
 from app.services.membership import MembershipService
@@ -96,6 +100,10 @@ def create_app(
     app.include_router(reports_router)
     app.include_router(comments_router)
     app.include_router(notifications_router)
+
+    # Stage I routers
+    app.include_router(integrations_router)
+    app.include_router(automation_tasks_router)
 
     return app
 

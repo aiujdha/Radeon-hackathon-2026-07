@@ -54,3 +54,21 @@ def test_phase_f_dependencies_are_declared() -> None:
     assert "fastapi" in runtime
     # python-multipart is needed for file upload (import confirm)
     assert "python-multipart" in runtime
+
+
+def test_stage_i_dependencies_are_declared() -> None:
+    """Verify Stage I dependencies are in pyproject.toml.
+
+    Stage I requires:
+    - cryptography (new, for token encryption via AES-256-GCM)
+    - fastapi (already used, reused for integration & automation task APIs)
+    """
+    with Path("pyproject.toml").open("rb") as file:
+        project = tomllib.load(file)["project"]
+
+    runtime = "\n".join(project["dependencies"])
+
+    # cryptography is needed for token manager encryption
+    assert "cryptography" in runtime
+    # fastapi is needed for integration and automation task API endpoints
+    assert "fastapi" in runtime

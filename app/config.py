@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     run_max_retries: int = Field(default=3, ge=0, le=10)
     run_timeout_seconds: int = Field(default=600, ge=30, le=7200)
 
+    # Stage I: stable server-side key for encrypted third-party credentials.
+    # It is optional at application start because integrations may be unused;
+    # TokenManager refuses credential storage until it is configured.
+    integration_encryption_key: str | None = Field(default=None, min_length=32)
+
     @field_validator("llm_base_url", "embedding_base_url")
     @classmethod
     def require_openai_v1_endpoint(cls, value: HttpUrl) -> HttpUrl:
