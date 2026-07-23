@@ -12,6 +12,7 @@ import json
 import logging
 import shutil
 import time
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -41,11 +42,17 @@ class BackupService:
         2. Vector DB directory
         3. Project configuration
         """
+        if label and not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", label):
+            raise ValueError("Backup label may contain only letters, digits, underscores, and hyphens")
         ts = datetime.now(timezone.utc)
         stamp = ts.strftime("%Y%m%dT%H%M%SZ")
         dir_name = f"backup-{stamp}" + (f"-{label}" if label else "")
         backup_dir = self._backup_root / dir_name
-        backup_dir.mkdir(parents=True, exist_ok=True)
+        suffix = 1
+        while backup_dir.exists():
+            backup_dir = self._backup_root / f"{dir_name}-{suffix}"
+            suffix += 1
+        backup_dir.mkdir(parents=True, exist_ok=False)
 
         files_backed_up: list[str] = []
         errors: list[str] = []
@@ -173,7 +180,14 @@ class BackupService:
         Returns:
             Dict with restore results.
         """
-        bp = Path(backup_dir)
+        bp = Path(backup_dir).resolve()
+        backup_root = self._backup_root.resolve()
+        try:
+            bp.relative_to(backup_root)
+        except ValueError as exc:
+            raise ValueError("Backup directory must be located under the configured backup root") from exc
+        if not bp.name.startswith("backup-"):
+            raise ValueError("Backup directory has an invalid name")
         if not bp.exists():
             raise FileNotFoundError(f"Backup directory not found: {backup_dir}")
 

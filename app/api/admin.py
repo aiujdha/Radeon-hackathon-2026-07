@@ -21,8 +21,11 @@ from app.schemas.models import (
 from app.services.backup import BackupService, get_backup
 from app.services.log_rotation import LogRotationService, get_log_rotation
 from app.services.stress_test import StressConfig, StressTestRunner
+from app.security.permissions import require_system_admin
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(
+    prefix="/admin", tags=["admin"], dependencies=[Depends(require_system_admin)]
+)
 
 
 def _get_backup(request: Request) -> BackupService:
@@ -44,7 +47,10 @@ async def create_backup(
     backup: Annotated[BackupService, Depends(_get_backup)],
 ) -> dict:
     """Create an on-demand full backup."""
-    manifest = backup.create_backup(label=body.label)
+    try:
+        manifest = backup.create_backup(label=body.label)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return manifest
 
 
@@ -77,7 +83,9 @@ async def restore_backup(
     try:
         result = backup.restore(body.backup_dir, dry_run=body.dry_run)
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return result
 
 
@@ -101,7 +109,10 @@ async def rotate_logs(
     log_file: str = "app.log",
 ) -> LogRotationResult:
     """Rotate a log file if it exceeds the size threshold."""
-    result = rotation.rotate(log_file)
+    try:
+        result = rotation.rotate(log_file)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return result
 
 
