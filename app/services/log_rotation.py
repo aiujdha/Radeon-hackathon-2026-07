@@ -39,7 +39,14 @@ class LogRotationService:
         Returns:
             Dict with rotation results.
         """
-        log_path = self._log_root / log_file_name
+        candidate = Path(log_file_name)
+        if candidate.is_absolute() or candidate.name != log_file_name:
+            raise ValueError("log_file must be a simple file name inside the log directory")
+        log_path = (self._log_root / candidate).resolve()
+        try:
+            log_path.relative_to(self._log_root.resolve())
+        except ValueError as exc:
+            raise ValueError("log_file escapes the configured log directory") from exc
         if not log_path.exists():
             return {"rotated": False, "reason": "file_not_found", "path": str(log_path)}
 

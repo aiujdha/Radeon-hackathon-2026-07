@@ -654,7 +654,11 @@ def monitor_client(tmp_path):
         sqlite_path=db_dir,
     )
     app = create_app(settings=settings)
-    return TestClient(app)
+    client = TestClient(app)
+    login = client.post("/auth/login", json={"username": "admin", "password": "admin123"})
+    assert login.status_code == 200
+    client.headers.update({"Authorization": f"Bearer {login.json()['access_token']}"})
+    return client
 
 
 def test_monitor_health_endpoint(monitor_client):
@@ -664,6 +668,12 @@ def test_monitor_health_endpoint(monitor_client):
     assert data["status"] in ("healthy", "degraded", "critical")
     assert "queue_status" in data
     assert "cache_stats" in data
+
+
+def test_monitor_endpoint_requires_authentication(tmp_path):
+    settings = Settings(sqlite_path=tmp_path / "projectpack.db")
+    with TestClient(create_app(settings=settings)) as client:
+        assert client.get("/monitor/queue").status_code == 401
 
 
 def test_monitor_queue_endpoint(monitor_client):
@@ -740,7 +750,11 @@ def admin_client(tmp_path):
     (settings.log_root / "app.log").write_text("test log")
 
     app = create_app(settings=settings)
-    return TestClient(app)
+    client = TestClient(app)
+    login = client.post("/auth/login", json={"username": "admin", "password": "admin123"})
+    assert login.status_code == 200
+    client.headers.update({"Authorization": f"Bearer {login.json()['access_token']}"})
+    return client
 
 
 def test_admin_create_backup(admin_client):
@@ -760,7 +774,13 @@ def test_admin_restore_404(admin_client):
         "/admin/backup/restore",
         json={"backup_dir": "/nonexistent/path", "dry_run": True},
     )
-    assert resp.status_code == 404
+    assert resp.status_code == 400
+
+
+def test_admin_endpoint_requires_authentication(tmp_path):
+    settings = Settings(sqlite_path=tmp_path / "projectpack.db")
+    with TestClient(create_app(settings=settings)) as client:
+        assert client.get("/admin/backup").status_code == 401
 
 
 def test_admin_cleanup_backups(admin_client):

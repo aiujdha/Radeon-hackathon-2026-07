@@ -20,8 +20,11 @@ from app.services.benchmark import BenchmarkCollector, get_benchmark
 from app.services.cache import TTLCache, get_cache
 from app.services.monitor import HealthMonitor, get_monitor
 from app.services.task_queue import TaskQueue, get_task_queue
+from app.security.permissions import get_current_user, require_system_admin
 
-router = APIRouter(prefix="/monitor", tags=["monitor"])
+router = APIRouter(
+    prefix="/monitor", tags=["monitor"], dependencies=[Depends(get_current_user)]
+)
 
 
 def _get_monitor(request: Request) -> HealthMonitor:
@@ -101,6 +104,7 @@ async def cache_stats(
 async def cache_invalidate(
     body: CacheInvalidateRequest,
     cache: Annotated[TTLCache, Depends(_get_cache)],
+    _: None = Depends(require_system_admin),
 ) -> dict:
     """Invalidate cache entries by project, category, or key prefix."""
     removed = 0

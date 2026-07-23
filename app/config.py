@@ -128,6 +128,10 @@ class Settings(BaseSettings):
     alert_on_warning: bool = Field(default=True)
     alert_on_critical: bool = Field(default=True)
 
+    # Production-management actions are deliberately restricted to named
+    # system administrators, independent of per-project roles.
+    system_admin_usernames: list[str] = Field(default_factory=lambda: ["admin"])
+
     @field_validator("llm_base_url", "embedding_base_url")
     @classmethod
     def require_openai_v1_endpoint(cls, value: HttpUrl) -> HttpUrl:
