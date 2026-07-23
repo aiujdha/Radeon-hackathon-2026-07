@@ -88,10 +88,12 @@ def build_project_report_tools(
         evidence_count = sum(len(items) for items in artifacts.evidence_by_task.values())
         return {"task_count": len(artifacts.tasks), "evidence_count": evidence_count}
 
-    def evaluate(_context: RunContext) -> dict[str, Any]:
+    def evaluate(context: RunContext) -> dict[str, Any]:
         if use_llm:
             artifacts.evaluations = asyncio.run(
-                evaluate_tasks_with_llm(artifacts.tasks, artifacts.evidence_by_task, settings)
+                evaluate_tasks_with_llm(
+                    artifacts.tasks, artifacts.evidence_by_task, settings, project_id=context.project_id
+                )
             )
         else:
             artifacts.evaluations = evaluate_tasks(artifacts.tasks, artifacts.evidence_by_task)

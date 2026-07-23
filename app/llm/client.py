@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import asyncio
 from typing import TypeVar
 
 import httpx
@@ -26,15 +27,33 @@ class LLMClient:
         return f"{str(self._settings.llm_base_url).rstrip('/')}/chat/completions"
 
     async def generate_text(
-        self, prompt: str, *, system_prompt: str | None = None, temperature: float = 0.2
+        self,
+        prompt: str,
+        *,
+        system_prompt: str | None = None,
+        temperature: float = 0.2,
+        project_id: str | None = None,
+        cancel_event: asyncio.Event | None = None,
     ) -> str:
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
-        return await self._complete(messages, temperature=temperature)
+        if not project_id:
+            return await self._complete(messages, temperature=temperature)
+        from app.services.task_queue import get_task_queue
 
-    async def generate_json(self, schema: type[ModelT], prompt: str) -> ModelT:
+        return await get_task_queue(self._settings).enqueue_llm(
+            project_id=project_id,
+            cancel_event=cancel_event or asyncio.Event(),
+            callable=self._complete,
+            messages=messages,
+            temperature=temperature,
+        )
+
+    async def generate_json(
+        self, schema: type[ModelT], prompt: str, *, project_id: str | None = None
+    ) -> ModelT:
         schema_text = json.dumps(schema.model_json_schema(), ensure_ascii=False)
         instruction = (
             "Return only one JSON object with no Markdown fences. It must validate against this JSON Schema: "
@@ -43,7 +62,9 @@ class LLMClient:
         last_error: Exception | None = None
         for attempt in range(2):
             retry_note = "" if attempt == 0 else " Your previous response was invalid. Return valid JSON only."
-            raw = await self.generate_text(prompt, system_prompt=instruction + retry_note, temperature=0)
+            raw = await self.generate_text(
+                prompt, system_prompt=instruction + retry_note, temperature=0, project_id=project_id
+            )
             try:
                 return schema.model_validate_json(raw)
             except ValidationError as error:

@@ -76,7 +76,9 @@ class ProjectIndex:
         self._fingerprints: dict[str, str] = {}  # relative_path → content hash
 
         # Embedder
-        self._embedder = embedder or create_embedder(mock_dim=mock_embed_dim)
+        self._embedder = embedder or create_embedder(
+            mock_dim=mock_embed_dim, project_id=self._project_id, settings=self._settings
+        )
 
         # Storage directory
         self._dir = ensure_project_path(self._settings.vector_db_root, self._project_id)
