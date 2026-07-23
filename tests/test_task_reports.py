@@ -1206,7 +1206,14 @@ class TestFullPipelineWithLLM:
         # MUST NOT be completed
         assert ev.status != TaskStatus.COMPLETED
         # Status should reflect the incomplete evidence
-        assert ev.status in (TaskStatus.NEEDS_CONFIRMATION, TaskStatus.IN_PROGRESS)
+        # The fixed historical deadline is intentionally overdue.  Delayed is
+        # therefore the expected safe classification as well as the two
+        # incomplete-but-not-overdue classifications.
+        assert ev.status in (
+            TaskStatus.NEEDS_CONFIRMATION,
+            TaskStatus.IN_PROGRESS,
+            TaskStatus.DELAYED,
+        )
 
     @pytest.mark.asyncio
     async def test_completed_task_with_llm_explanation(self):
