@@ -8,6 +8,7 @@ Supports cancellation via user-provided ``asyncio.Event`` handles.
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Coroutine
@@ -46,21 +47,25 @@ class TaskQueue:
         self._settings = settings
 
         # Global semaphores
-        self._llm_semaphore = asyncio.Semaphore(settings.global_max_concurrent_llm_calls)
-        self._embedding_semaphore = asyncio.Semaphore(
+        # The production runner executes synchronous tools in worker threads.
+        # Threading semaphores keep one quota across those separate event loops.
+        self._llm_semaphore = threading.BoundedSemaphore(settings.global_max_concurrent_llm_calls)
+        self._embedding_semaphore = threading.BoundedSemaphore(
             settings.global_max_concurrent_embedding_calls
         )
 
         # Per-project semaphores (lazy)
-        self._project_llm_semaphores: dict[str, asyncio.Semaphore] = {}
-        self._project_embedding_semaphores: dict[str, asyncio.Semaphore] = {}
+        self._project_llm_semaphores: dict[str, threading.BoundedSemaphore] = {}
+        self._project_embedding_semaphores: dict[str, threading.BoundedSemaphore] = {}
 
         self._stats = QueueStats()
+        self._lock = threading.Lock()
 
     @property
     def stats(self) -> QueueStats:
-        self._stats.last_update = time.time()
-        return self._stats
+        with self._lock:
+            self._stats.last_update = time.time()
+            return QueueStats(**self._stats.__dict__)
 
     # ------------------------------------------------------------------
     # public API
@@ -135,7 +140,7 @@ class TaskQueue:
         self,
         project_id: str,
         global_sem: asyncio.Semaphore,
-        project_sems: dict[str, asyncio.Semaphore],
+        project_sems: dict[str, threading.BoundedSemaphore],
         max_per_project: int,
         timeout: float,
         cancel_event: asyncio.Event,
@@ -146,64 +151,92 @@ class TaskQueue:
         """Core enqueue logic shared between LLM and Embedding calls."""
 
         # Lazy per-project semaphore
-        if project_id not in project_sems:
-            project_sems[project_id] = asyncio.Semaphore(max_per_project)
-
-        project_sem = project_sems[project_id]
-
-        self._stats.queued_calls += 1
+        with self._lock:
+            if project_id not in project_sems:
+                project_sems[project_id] = threading.BoundedSemaphore(max_per_project)
+            project_sem = project_sems[project_id]
+            self._stats.queued_calls += 1
 
         # Acquire both semaphores with timeout
         try:
-            async with asyncio.timeout(timeout):
-                # Acquire project quota first (finer granularity)
-                await project_sem.acquire()
-                try:
-                    await global_sem.acquire()
-                except BaseException:
-                    project_sem.release()
-                    raise
+            # Acquire project quota first (finer granularity), then global
+            # quota.  Polling lets cancellation interrupt a queued request.
+            await self._acquire(project_sem, cancel_event, timeout)
+            try:
+                await self._acquire(global_sem, cancel_event, timeout)
+            except BaseException:
+                project_sem.release()
+                raise
         except asyncio.TimeoutError:
-            self._stats.queued_calls -= 1
-            self._stats.total_timeouts += 1
+            with self._lock:
+                self._stats.queued_calls -= 1
+                self._stats.total_timeouts += 1
             raise RuntimeError(
                 f"{kind.upper()} call for project {project_id!r} timed out "
                 f"waiting for a slot (timeout={timeout}s)"
             )
+        except asyncio.CancelledError:
+            with self._lock:
+                self._stats.queued_calls -= 1
+                self._stats.total_cancelled += 1
+            raise
 
         # Bump active counters
-        if kind == "llm":
-            self._stats.active_llm_calls += 1
-        else:
-            self._stats.active_embedding_calls += 1
-        self._stats.queued_calls -= 1
+        with self._lock:
+            if kind == "llm":
+                self._stats.active_llm_calls += 1
+            else:
+                self._stats.active_embedding_calls += 1
+            self._stats.queued_calls -= 1
 
         try:
             # Check for cancellation before execution
             if cancel_event.is_set():
-                self._stats.total_cancelled += 1
+                with self._lock:
+                    self._stats.total_cancelled += 1
                 raise asyncio.CancelledError(
                     f"{kind.upper()} call for project {project_id!r} was cancelled"
                 )
 
             result = await callable(**kwargs)
-            self._stats.total_completed += 1
+            with self._lock:
+                self._stats.total_completed += 1
             return result
         except asyncio.CancelledError:
-            self._stats.total_cancelled += 1
+            with self._lock:
+                self._stats.total_cancelled += 1
             raise
         except Exception:
-            self._stats.total_errors += 1
+            with self._lock:
+                self._stats.total_errors += 1
             raise
         finally:
-            if kind == "llm":
-                self._stats.active_llm_calls = max(0, self._stats.active_llm_calls - 1)
-            else:
-                self._stats.active_embedding_calls = max(
-                    0, self._stats.active_embedding_calls - 1
-                )
+            with self._lock:
+                if kind == "llm":
+                    self._stats.active_llm_calls = max(0, self._stats.active_llm_calls - 1)
+                else:
+                    self._stats.active_embedding_calls = max(
+                        0, self._stats.active_embedding_calls - 1
+                    )
             project_sem.release()
             global_sem.release()
+
+    async def _acquire(
+        self,
+        semaphore: threading.BoundedSemaphore,
+        cancel_event: asyncio.Event,
+        timeout: float,
+    ) -> None:
+        deadline = time.monotonic() + timeout
+        while True:
+            if cancel_event.is_set():
+                raise asyncio.CancelledError("queue request was cancelled before execution")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise asyncio.TimeoutError
+            acquired = await asyncio.to_thread(semaphore.acquire, True, min(0.1, remaining))
+            if acquired:
+                return
 
 
 # Singleton-style module-level accessor
