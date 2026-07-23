@@ -335,6 +335,8 @@ async def evaluate_with_llm(
     task: TaskRecord,
     evidence_texts: List[str],
     llm_client: object,
+    *,
+    project_id: str | None = None,
 ) -> TaskEvaluation:
     """Evaluate a task: rules determine status, LLM adds explanation.
 
@@ -377,11 +379,10 @@ async def evaluate_with_llm(
     )
 
     try:
-        raw_response = await llm_client.generate_text(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=0.3,
-        )
+        kwargs = {"prompt": prompt, "system_prompt": system_prompt, "temperature": 0.3}
+        if project_id is not None:
+            kwargs["project_id"] = project_id
+        raw_response = await llm_client.generate_text(**kwargs)
         parsed = _extract_llm_json(raw_response)
 
         if parsed:
