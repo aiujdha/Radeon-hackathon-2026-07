@@ -149,3 +149,12 @@ def require_any_project_role(*required_roles: str) -> Callable:
         raise HTTPException(status_code=403, detail=get_error("ACCESS_DENIED"))
 
     return _guard
+
+
+async def require_system_admin(
+    user: dict = Depends(get_current_user), request: Request = None
+) -> None:
+    """Allow production-management operations only for configured admins."""
+    allowed = set(getattr(request.app.state.settings, "system_admin_usernames", []))
+    if user.get("username") not in allowed:
+        raise HTTPException(status_code=403, detail=get_error("ACCESS_DENIED"))

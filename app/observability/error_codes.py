@@ -343,6 +343,69 @@ APP_ERROR_CODES: dict[str, dict[str, str]] = {
         "message": "Token encryption/decryption failed.",
         "user_message": "令牌加解密失败。",
     },
+    # ------------------------------------------------------------------
+    # Stage J — Production & AMD Radeon Optimization
+    # ------------------------------------------------------------------
+    "CONCURRENCY_LIMIT_EXCEEDED": {
+        "code": "CONCURRENCY_LIMIT_EXCEEDED",
+        "message": "Global or per-project concurrency limit exceeded.",
+        "user_message": "并发调用超出限制，请稍后重试。",
+    },
+    "QUEUE_TIMEOUT": {
+        "code": "QUEUE_TIMEOUT",
+        "message": "Task waited too long in the queue and timed out.",
+        "user_message": "任务排队超时，请稍后重试。",
+    },
+    "LLM_CALL_CANCELLED": {
+        "code": "LLM_CALL_CANCELLED",
+        "message": "The LLM call was cancelled.",
+        "user_message": "模型调用已被取消。",
+    },
+    "EMBEDDING_SERVICE_UNAVAILABLE": {
+        "code": "EMBEDDING_SERVICE_UNAVAILABLE",
+        "message": "Embedding model service is not reachable.",
+        "user_message": "向量模型服务不可用。",
+    },
+    "CACHE_INVALID_KEY": {
+        "code": "CACHE_INVALID_KEY",
+        "message": "Cache key is invalid or malformed.",
+        "user_message": "缓存键无效。",
+    },
+    "BACKUP_FAILED": {
+        "code": "BACKUP_FAILED",
+        "message": "Backup operation failed.",
+        "user_message": "备份操作失败。",
+    },
+    "RECOVERY_FAILED": {
+        "code": "RECOVERY_FAILED",
+        "message": "Recovery operation failed.",
+        "user_message": "恢复操作失败。",
+    },
+    "BACKUP_NOT_FOUND": {
+        "code": "BACKUP_NOT_FOUND",
+        "message": "Backup does not exist.",
+        "user_message": "备份文件不存在。",
+    },
+    "HEALTH_DEGRADED": {
+        "code": "HEALTH_DEGRADED",
+        "message": "One or more health checks indicate degradation.",
+        "user_message": "服务健康状况异常。",
+    },
+    "HEALTH_CRITICAL": {
+        "code": "HEALTH_CRITICAL",
+        "message": "One or more health checks indicate critical failure.",
+        "user_message": "服务健康严重异常。",
+    },
+    "BENCHMARK_NOT_INITIALIZED": {
+        "code": "BENCHMARK_NOT_INITIALIZED",
+        "message": "Benchmark data has not been collected.",
+        "user_message": "尚未收集基准测试数据。",
+    },
+    "STRESS_TEST_INVALID_PARAMS": {
+        "code": "STRESS_TEST_INVALID_PARAMS",
+        "message": "Stress test parameters are invalid.",
+        "user_message": "压测参数无效。",
+    },
 }
 
 

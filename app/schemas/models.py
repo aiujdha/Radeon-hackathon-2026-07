@@ -739,3 +739,160 @@ class NotificationEntry(BaseModel):
 
 class NotificationBatchRead(BaseModel):
     notification_ids: list[str] = Field(min_length=1, max_length=200)
+
+
+# ===========================================================================
+# Phase J — Production & AMD Radeon Optimization models
+# ===========================================================================
+
+
+class QueueStatus(BaseModel):
+    """Real-time task queue status."""
+    active_llm_calls: int = 0
+    active_embedding_calls: int = 0
+    queued_calls: int = 0
+    total_completed: int = 0
+    total_cancelled: int = 0
+    total_timeouts: int = 0
+    total_errors: int = 0
+    global_llm_capacity: int = 4
+    global_embedding_capacity: int = 8
+
+
+class CacheStats(BaseModel):
+    """Cache statistics."""
+    enabled: bool = True
+    size: int = 0
+    max_entries: int = 5000
+    hits: int = 0
+    misses: int = 0
+    hit_rate: float = 0.0
+    evictions: int = 0
+    ttls: dict[str, int] = Field(default_factory=dict)
+
+
+class CacheInvalidateRequest(BaseModel):
+    """Request to invalidate cache entries."""
+    project_id: str | None = Field(default=None, max_length=120)
+    category: str | None = Field(default=None, pattern="^(index|embedding|report)$")
+    key_prefix: str | None = Field(default=None, max_length=256)
+
+
+class GPUMetricModel(BaseModel):
+    """GPU metric for API response."""
+    device_id: int = 0
+    name: str = ""
+    vram_total_mb: float = 0.0
+    vram_used_mb: float = 0.0
+    vram_free_mb: float = 0.0
+    utilization_pct: float = 0.0
+    temperature_c: float = 0.0
+
+
+class ModelMetadataModel(BaseModel):
+    """Model metadata for API response."""
+    model_name: str = ""
+    model_path: str = ""
+    quantization: str = ""
+    context_size: int = 0
+    gpu_layers: int = 0
+    backend: str = "rocm"
+    llama_cpp_version: str = ""
+
+
+class SystemMetricsModel(BaseModel):
+    """System metrics for API response."""
+    disk_total_gb: float = 0.0
+    disk_used_gb: float = 0.0
+    disk_free_gb: float = 0.0
+    disk_used_pct: float = 0.0
+
+
+class HealthCheckResponse(BaseModel):
+    """Full health check response."""
+    status: str = "healthy"  # healthy | degraded | critical
+    issues: list[dict[str, str]] = Field(default_factory=list)
+    gpu_metrics: list[GPUMetricModel] = Field(default_factory=list)
+    system_metrics: SystemMetricsModel = Field(default_factory=SystemMetricsModel)
+    model_metadata: ModelMetadataModel = Field(default_factory=ModelMetadataModel)
+    llm_error_rate: float = 0.0
+    queue_status: QueueStatus = Field(default_factory=QueueStatus)
+    cache_stats: CacheStats = Field(default_factory=CacheStats)
+    timestamp: float = 0.0
+
+
+class BenchmarkSnapshotModel(BaseModel):
+    """Benchmark snapshot for API."""
+    label: str = ""
+    first_token_latency_ms: float = 0.0
+    generation_tokens_per_second: float = 0.0
+    embedding_throughput_texts_per_second: float = 0.0
+    end_to_end_latency_ms: float = 0.0
+    vram_used_mb: float = 0.0
+    vram_total_mb: float = 0.0
+    gpu_utilization_pct: float = 0.0
+    gpu_model: str = ""
+    quantization: str = ""
+    llama_cpp_version: str = ""
+    backend: str = "rocm"
+    context_size: int = 0
+    gpu_layers: int = 0
+    timestamp: float = 0.0
+
+
+class BenchmarkCompareResponse(BaseModel):
+    """Before/after benchmark comparison."""
+    baseline_label: str = ""
+    optimized_label: str = ""
+    first_token_latency: dict[str, float] = Field(default_factory=dict)
+    generation_speed: dict[str, float] = Field(default_factory=dict)
+    embedding_throughput: dict[str, float] = Field(default_factory=dict)
+    end_to_end_latency: dict[str, float] = Field(default_factory=dict)
+    vram_usage: dict[str, float] = Field(default_factory=dict)
+    gpu_utilization: dict[str, float] = Field(default_factory=dict)
+    hardware_info: dict[str, str] = Field(default_factory=dict)
+
+
+class BackupCreateRequest(BaseModel):
+    """Request to create a backup."""
+    label: str = Field(default="", max_length=200)
+
+
+class BackupEntry(BaseModel):
+    """A backup entry in the listing."""
+    backup_dir: str = ""
+    name: str = ""
+    timestamp: str = ""
+    label: str = ""
+    total_size_bytes: int = 0
+    file_count: int = 0
+    status: str = "success"
+
+
+class BackupRestoreRequest(BaseModel):
+    """Request to restore from a backup."""
+    backup_dir: str = Field(min_length=1, max_length=1024)
+    dry_run: bool = False
+
+
+class LogRotationResult(BaseModel):
+    """Log rotation result."""
+    rotated: bool = False
+    reason: str = ""
+    size_mb: float = 0.0
+    max_mb: float = 0.0
+    old_path: str = ""
+    new_path: str = ""
+    compressed: bool = False
+
+
+class StressTestConfigModel(BaseModel):
+    """Stress test configuration."""
+    large_file_count: int = Field(default=1, ge=0, le=100)
+    large_file_size_mb: int = Field(default=10, ge=1, le=1000)
+    batch_file_count: int = Field(default=20, ge=1, le=1000)
+    batch_file_size_kb: int = Field(default=50, ge=1, le=10240)
+    long_context_prompt_tokens: int = Field(default=4000, ge=100, le=32000)
+    long_context_requests: int = Field(default=5, ge=1, le=100)
+    multi_project_count: int = Field(default=4, ge=1, le=50)
+    multi_project_requests_per_project: int = Field(default=10, ge=1, le=100)  # noqa: E501

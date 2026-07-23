@@ -27,6 +27,12 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8,<9", "pytest-asyncio>=0.24,<1", "reportlab>=4,<6"]
 
+[project.scripts]
+projectpack-benchmark = "app.services.benchmark:_cli_benchmark"
+projectpack-stress-test = "app.services.stress_test:_cli_main"
+projectpack-backup = "app.cli.admin:_cli_backup"
+projectpack-health = "app.cli.admin:_cli_health"
+
 [tool.ruff]
 exclude = [
   ".git",
