@@ -28,12 +28,18 @@ from app.api.notifications import router as notifications_router
 from app.api.integrations import router as integrations_router
 from app.api.automation_tasks import router as automation_tasks_router
 
+# Stage J routers
+from app.api.monitor import router as monitor_router
+from app.api.admin import router as admin_router
+
 from app.config import Settings
 from app.services.cleanup import run_cleanup
 from app.services.membership import MembershipService
 from app.services.comments import CommentService
 from app.services.notifications import NotificationService
 from app.services.report_center import ReportCenterService
+from app.services.backup import BackupService
+from app.services.log_rotation import LogRotationService
 
 
 async def _cleanup_loop(settings: Settings) -> None:
@@ -44,6 +50,34 @@ async def _cleanup_loop(settings: Settings) -> None:
             run_cleanup(settings)
         except Exception:
             pass  # cleanup must never crash the app
+
+
+async def _auto_backup_loop(settings: Settings) -> None:
+    """Background task that creates automatic backups (Stage J)."""
+    if not settings.backup_auto_enabled:
+        return
+    backup_svc = BackupService(settings)
+    while True:
+        await asyncio.sleep(settings.backup_cron_interval_minutes * 60)
+        try:
+            backup_svc.create_backup(label="auto")
+            backup_svc.cleanup_old_backups()
+        except Exception:
+            pass
+
+
+async def _log_rotation_loop(settings: Settings) -> None:
+    """Background task that rotates logs periodically (Stage J)."""
+    if not settings.log_rotation_enabled:
+        return
+    rotation_svc = LogRotationService(settings)
+    while True:
+        await asyncio.sleep(3600)  # check every hour
+        try:
+            rotation_svc.rotate_all()
+            rotation_svc.cleanup_old_logs()
+        except Exception:
+            pass
 
 
 def create_app(
@@ -58,10 +92,13 @@ def create_app(
         for directory in runtime_settings.required_directories():
             directory.mkdir(parents=True, exist_ok=True)
         cleanup_task = asyncio.create_task(_cleanup_loop(runtime_settings))
+        backup_task = asyncio.create_task(_auto_backup_loop(runtime_settings))
+        rotation_task = asyncio.create_task(_log_rotation_loop(runtime_settings))
         yield
-        cleanup_task.cancel()
+        for t in (cleanup_task, backup_task, rotation_task):
+            t.cancel()
         try:
-            await cleanup_task
+            await asyncio.gather(cleanup_task, backup_task, rotation_task)
         except asyncio.CancelledError:
             pass
 
@@ -104,6 +141,10 @@ def create_app(
     # Stage I routers
     app.include_router(integrations_router)
     app.include_router(automation_tasks_router)
+
+    # Stage J routers
+    app.include_router(monitor_router)
+    app.include_router(admin_router)
 
     return app
 
