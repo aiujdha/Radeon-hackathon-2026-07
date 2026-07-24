@@ -38,9 +38,30 @@ export const API_PATHS = {
     `/api/projects/${projectId}/runs/${runId}/artifacts/${artifactName}`,
 
   // Tasks (absolute routes: /api/projects/{project_id}/tasks)
+  // NOTE: static segments (confirmation-queue, audit-log, extract, …) are
+  // declared by the backend BEFORE the dynamic `{task_id}` routes; keep the
+  // same set here so the contract validator can match every path 1:1.
   tasks: (projectId: string) => `/api/projects/${projectId}/tasks`,
   taskDetail: (projectId: string, taskId: string) =>
     `/api/projects/${projectId}/tasks/${taskId}`,
+  taskTransition: (projectId: string, taskId: string) =>
+    `/api/projects/${projectId}/tasks/${taskId}/transition`,
+  taskHistory: (projectId: string, taskId: string) =>
+    `/api/projects/${projectId}/tasks/${taskId}/history`,
+  taskConfirmationQueue: (projectId: string) =>
+    `/api/projects/${projectId}/tasks/confirmation-queue`,
+  taskConfirmation: (projectId: string, taskId: string) =>
+    `/api/projects/${projectId}/tasks/confirmation/${taskId}`,
+  taskAuditLog: (projectId: string) =>
+    `/api/projects/${projectId}/tasks/audit-log`,
+  taskExtract: (projectId: string) =>
+    `/api/projects/${projectId}/tasks/extract`,
+  taskSubmitCandidates: (projectId: string) =>
+    `/api/projects/${projectId}/tasks/submit-candidates`,
+  taskImportPreview: (projectId: string) =>
+    `/api/projects/${projectId}/tasks/import-preview`,
+  taskImportConfirm: (projectId: string) =>
+    `/api/projects/${projectId}/tasks/import-confirm`,
 
   // Risks (prefix: /projects/{project_id}/risks)
   risks: (projectId: string) => `/projects/${projectId}/risks`,

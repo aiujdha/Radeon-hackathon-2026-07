@@ -89,7 +89,18 @@ function extract422Messages(body: { detail?: unknown }): string | undefined {
 /** Build an `ApiError` from an HTTP status and a (best-effort) parsed body. */
 export function mapError(status: number, body: unknown): ApiError {
   if (body && typeof body === 'object') {
-    const b = body as Record<string, unknown>
+    let b = body as Record<string, unknown>
+    // Some routers raise HTTPException(detail={error_code, ...}); FastAPI then
+    // nests the structured body under `detail`. Unwrap it so both shapes map
+    // to the same ApiError (task lifecycle/import/confirmation errors use it).
+    if (
+      b.detail &&
+      typeof b.detail === 'object' &&
+      !Array.isArray(b.detail) &&
+      (b.detail as Record<string, unknown>).error_code !== undefined
+    ) {
+      b = b.detail as Record<string, unknown>
+    }
     if (status === 422 && b.detail !== undefined) {
       const msg = extract422Messages(b as { detail?: unknown })
       return new ApiError(status, {
