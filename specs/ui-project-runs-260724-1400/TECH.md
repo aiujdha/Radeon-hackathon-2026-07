@@ -1,7 +1,7 @@
 # UI-1a technical design
 
 - Level: S2
-- Status: draft
+- Status: implemented
 
 ## Dependencies
 
@@ -18,6 +18,23 @@
 - Add API-client and UI behavior tests with mocked fetch; use cloud only for
   final real-model acceptance.
 
+## Implementation notes
+
+- The project overview reads only `/projects/{project_id}/overview` and the
+  project list reads only `/api/projects`; both are membership-protected by
+  the production authorization configuration.
+- Artifact links are not exposed as server paths. The client downloads blobs
+  from `/api/projects/{project_id}/runs/{run_id}/artifacts/{artifact_name}`
+  with its Bearer token.
+- Active runs are polled every three seconds and all mutating controls are
+  disabled while their request is in progress.
+
 ## Rollback
 
 Revert this feature branch; UI-0 remains a standalone foundation.
+
+## Cloud acceptance boundary
+
+Real-model and RAG acceptance is intentionally pending until the cloud
+instance is available. This does not block the local UI contract, build, and
+mocked API regression checks recorded in `TEST_REPORT.md`.

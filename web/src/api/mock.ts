@@ -42,15 +42,15 @@ export const MOCK_PROJECTS: Project[] = [
 export const MOCK_OVERVIEW: ProjectOverview = {
   project_id: 'demo-proj',
   project_name: 'Demo Project',
-  task_stats: { total: 4, todo: 2, in_progress: 1, done: 1, blocked: 0 },
-  risk_stats: { total: 3, open: 2, watch: 1, closed: 0 },
+  task_stats: { total: 4, not_started: 2, in_progress: 1, completed: 1 },
+  risk_stats: { total_active: 3, high: 2, medium: 1 },
   pending_confirmations: 1,
   recent_doc_changes: [
     {
-      doc_id: 'mock-doc-1',
-      doc_name: 'requirements.md',
-      change_type: 'updated',
-      changed_at: '2026-07-23T09:00:00Z',
+      path: 'requirements.md',
+      sha256: 'mock-sha256',
+      is_current: true,
+      last_seen: '2026-07-23T09:00:00Z',
     },
   ],
   recent_runs: [
@@ -58,7 +58,8 @@ export const MOCK_OVERVIEW: ProjectOverview = {
     {
       run_id: 'mock-run-1',
       status: 'completed',
-      started_at: '2026-07-23T08:30:00Z',
+      created_at: '2026-07-23T08:30:00Z',
+      completed_at: '2026-07-23T08:31:00Z',
     },
   ],
 }

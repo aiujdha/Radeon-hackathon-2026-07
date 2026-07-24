@@ -65,33 +65,29 @@ export type ProjectStatus = 'created' | 'importing' | 'ready' | 'failed'
 // Structural: backend returns `task_stats` as a plain dict (no named model).
 export interface TaskStats {
   total: number
-  todo: number
-  in_progress: number
-  done: number
-  blocked: number
+  [status: string]: number
 }
 
 // Structural: backend returns `risk_stats` as a plain dict (no named model).
 export interface RiskStats {
-  total: number
-  open: number
-  watch: number
-  closed: number
+  total_active?: number
+  [severity: string]: number | undefined
 }
 
 // Structural: backend returns `recent_doc_changes` as list[dict] (no named model).
 export interface DocChangeSummary {
-  doc_id: string
-  doc_name: string
-  change_type: string
-  changed_at: string
+  path: string
+  sha256: string
+  is_current: boolean
+  last_seen: string
 }
 
 // Structural: backend returns `recent_runs` as list[dict] (no named model).
 export interface RunSummary {
   run_id: string
   status: RunStatus
-  started_at: string
+  created_at: string
+  completed_at: string | null
 }
 
 // maps: ProjectOverview
@@ -136,12 +132,12 @@ export interface RunState {
   run_id: string
   project_id: string
   status: RunStatus
-  current_step: string | null
+  current_step: number
   created_at: string
   updated_at: string
   completed_at: string | null
   error: string | null
-  artifacts: Record<string, unknown>
+  artifacts: Record<string, string>
   timing_by_step: StepTiming[]
   retry_count: number
   cancel_requested: boolean
@@ -153,7 +149,7 @@ export interface RunState {
 export interface RunProgress {
   run_id: string
   status: RunStatus
-  current_step: string | null
+  current_step: number
   current_step_name: string | null
   percentage: number
   current_file: string | null

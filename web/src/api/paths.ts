@@ -27,6 +27,12 @@ export const API_PATHS = {
     `/api/projects/${projectId}/runs/${runId}`,
   runProgress: (projectId: string, runId: string) =>
     `/api/projects/${projectId}/runs/${runId}/progress`,
+  executeRun: (projectId: string, runId: string) =>
+    `/api/projects/${projectId}/runs/${runId}/execute`,
+  retryRun: (projectId: string, runId: string) =>
+    `/api/projects/${projectId}/runs/${runId}/retry`,
+  runArtifact: (projectId: string, runId: string, artifactName: string) =>
+    `/api/projects/${projectId}/runs/${runId}/artifacts/${artifactName}`,
 
   // Tasks (absolute routes: /api/projects/{project_id}/tasks)
   tasks: (projectId: string) => `/api/projects/${projectId}/tasks`,

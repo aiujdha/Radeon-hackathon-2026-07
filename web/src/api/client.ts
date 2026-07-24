@@ -6,6 +6,8 @@ import type {
   UserProfile,
   Project,
   ProjectOverview,
+  RunProgress,
+  RunState,
 } from './dto'
 
 export interface ApiClientOptions {
@@ -102,6 +104,37 @@ export class ApiClient {
     }
   }
 
+  private async requestBlob(path: string): Promise<{ blob: Blob; filename: string }> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs)
+    let response: Response
+    try {
+      response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+        method: 'GET',
+        headers: this.buildHeaders(),
+        signal: controller.signal,
+      })
+    } catch {
+      throw new ApiError(NETWORK_ERROR_STATUS, {
+        message: 'Network request failed. Please check your connection.',
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+    if (!response.ok) {
+      let parsed: unknown = null
+      try {
+        parsed = await response.json()
+      } catch {
+        // The error response may be an empty file response.
+      }
+      throw mapError(response.status, parsed)
+    }
+    const disposition = response.headers.get('content-disposition') ?? ''
+    const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? 'artifact'
+    return { blob: await response.blob(), filename }
+  }
+
   // ----- Auth -----
 
   login(req: LoginRequest): Promise<TokenResponse> {
@@ -124,5 +157,43 @@ export class ApiClient {
 
   getOverview(projectId: string): Promise<ProjectOverview> {
     return this.request<ProjectOverview>('GET', API_PATHS.overview(projectId))
+  }
+
+  // ----- Runs -----
+
+  listRuns(projectId: string): Promise<RunState[]> {
+    return this.request('GET', API_PATHS.runs(projectId))
+  }
+
+  getRun(projectId: string, runId: string): Promise<RunState> {
+    return this.request('GET', API_PATHS.runDetail(projectId, runId))
+  }
+
+  getRunProgress(projectId: string, runId: string): Promise<RunProgress> {
+    return this.request('GET', API_PATHS.runProgress(projectId, runId))
+  }
+
+  createRun(projectId: string): Promise<RunState> {
+    return this.request('POST', API_PATHS.runs(projectId))
+  }
+
+  executeRun(projectId: string, runId: string): Promise<RunState> {
+    return this.request('POST', API_PATHS.executeRun(projectId, runId))
+  }
+
+  cancelRun(projectId: string, runId: string): Promise<RunState> {
+    return this.request('DELETE', API_PATHS.runDetail(projectId, runId))
+  }
+
+  retryRun(projectId: string, runId: string): Promise<RunState> {
+    return this.request('POST', API_PATHS.retryRun(projectId, runId))
+  }
+
+  downloadRunArtifact(
+    projectId: string,
+    runId: string,
+    artifactName: string,
+  ): Promise<{ blob: Blob; filename: string }> {
+    return this.requestBlob(API_PATHS.runArtifact(projectId, runId, artifactName))
   }
 }
