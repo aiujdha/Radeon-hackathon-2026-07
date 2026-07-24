@@ -101,6 +101,29 @@ export interface ProjectOverview {
   recent_runs: RunSummary[]
 }
 
+// maps: UploadResult
+export interface UploadResult {
+  relative_path: string
+  size_bytes: number
+  sha256: string | null
+  mime_detected: string | null
+  extension_matched: boolean
+  virus_scan_status: string
+}
+
+// maps: ProjectFileEntry
+export interface ProjectFileEntry {
+  relative_path: string
+  filename: string
+  size_bytes: number
+  updated_at: string
+  sha256: string | null
+  parse_version: number | null
+  index_version: number | null
+  processing_status: 'uploaded' | 'indexed'
+  is_task_file: boolean
+}
+
 // ---------------------------------------------------------------------------
 // Runs
 // ---------------------------------------------------------------------------

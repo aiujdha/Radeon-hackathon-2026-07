@@ -8,7 +8,7 @@
     "dev": "vite --config vite.dev.config.ts",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run src/api/client.test.ts src/api/runs.test.ts && vitest run src/api/contract.test.ts && vitest run src/auth/guard.test.tsx",
+    "test": "vitest run src/api/client.test.ts src/api/runs.test.ts src/api/files.test.ts && vitest run src/api/contract.test.ts && vitest run src/auth/guard.test.tsx",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit"

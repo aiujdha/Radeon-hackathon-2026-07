@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import mimetypes
+import sqlite3
 import subprocess
+from datetime import datetime
 from pathlib import Path
 
 from app.config import Settings
@@ -12,6 +14,7 @@ from app.schemas.models import (
     EXTENSION_TO_MIME,
     FileValidationError,
     UploadResult,
+    ProjectFileEntry,
 )
 from app.security.paths import ensure_project_path
 from app.services.projects import ProjectNotFoundError, project_paths
@@ -245,3 +248,63 @@ def save_project_upload(
         virus_scan_status="passed" if settings.virus_scan_enabled else "skipped",
     )
     return f"source/{target_name}", upload_result
+
+
+def list_project_files(settings: Settings, project_id: str) -> list[ProjectFileEntry]:
+    """Return source-file metadata through the controlled backend boundary.
+
+    The browser never scans the project directory.  Index state is reported
+    only when Stage G has persisted a current document-version record.
+    """
+    paths = project_paths(settings.project_root, settings.output_root, project_id)
+    if not paths["project"].is_dir():
+        raise ProjectNotFoundError(project_id)
+
+    versions = _current_document_versions(settings, project_id)
+    records: list[ProjectFileEntry] = []
+    source_root = paths["source"]
+    if not source_root.is_dir():
+        return records
+    for path in sorted(source_root.rglob("*")):
+        if not path.is_file():
+            continue
+        relative_to_source = path.relative_to(source_root).as_posix()
+        relative_path = f"source/{relative_to_source}"
+        version = versions.get(relative_path)
+        stat = path.stat()
+        records.append(
+            ProjectFileEntry(
+                relative_path=relative_path,
+                filename=path.name,
+                size_bytes=stat.st_size,
+                updated_at=datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
+                sha256=version.get("sha256") if version else None,
+                parse_version=version.get("parse_version") if version else None,
+                index_version=version.get("index_version") if version else None,
+                processing_status="indexed" if version and version["index_version"] > 0 else "uploaded",
+                is_task_file=relative_to_source in {"tasks.csv", "tasks.xlsx"},
+            )
+        )
+    return records
+
+
+def _current_document_versions(settings: Settings, project_id: str) -> dict[str, dict[str, object]]:
+    """Read persisted version records when the optional project DB exists."""
+    sqlite_root = settings.sqlite_path if settings.sqlite_path.is_dir() else settings.sqlite_path.parent
+    database = sqlite_root / "projects" / project_id / "tasks.db"
+    if not database.is_file():
+        return {}
+    try:
+        connection = sqlite3.connect(database)
+        connection.row_factory = sqlite3.Row
+        try:
+            rows = connection.execute(
+                "SELECT relative_path, sha256, parse_version, index_version "
+                "FROM document_version WHERE project_id = ? AND is_current = 1",
+                (project_id,),
+            ).fetchall()
+        finally:
+            connection.close()
+    except sqlite3.OperationalError:
+        return {}
+    return {row["relative_path"]: dict(row) for row in rows}

@@ -207,6 +207,20 @@ class UploadResult(BaseModel):
     virus_scan_status: str = "skipped"
 
 
+class ProjectFileEntry(BaseModel):
+    """Safe metadata for one file in a project's controlled source area."""
+
+    relative_path: str
+    filename: str
+    size_bytes: int = Field(ge=0)
+    updated_at: str
+    sha256: str | None = None
+    parse_version: int | None = Field(default=None, ge=1)
+    index_version: int | None = Field(default=None, ge=1)
+    processing_status: str = Field(pattern="^(uploaded|indexed)$")
+    is_task_file: bool = False
+
+
 # ---------------------------------------------------------------------------
 # Stage E — Error codes
 # ---------------------------------------------------------------------------

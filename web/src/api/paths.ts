@@ -17,6 +17,9 @@ export const API_PATHS = {
   // Projects (prefix: /api/projects)
   projects: '/api/projects',
   projectDetail: (projectId: string) => `/api/projects/${projectId}`,
+  files: (projectId: string) => `/api/projects/${projectId}/files`,
+  downloadFile: (projectId: string, filename: string) =>
+    `/api/projects/${projectId}/files/download/${filename}`,
 
   // Overview (prefix: /projects/{project_id})
   overview: (projectId: string) => `/projects/${projectId}/overview`,

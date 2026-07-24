@@ -17,6 +17,8 @@ const EXPECTED_MAPPED = [
   'ProjectCreate',
   'Project',
   'ProjectOverview',
+  'UploadResult',
+  'ProjectFileEntry',
   'StepTiming',
   'RunState',
   'RunProgress',

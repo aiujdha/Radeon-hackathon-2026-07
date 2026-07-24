@@ -8,6 +8,8 @@ import type {
   ProjectOverview,
   RunProgress,
   RunState,
+  ProjectFileEntry,
+  UploadResult,
 } from './dto'
 
 export interface ApiClientOptions {
@@ -47,8 +49,9 @@ export class ApiClient {
     this.fetchImpl = opts.fetchImpl ?? ((...a: Parameters<typeof fetch>) => fetch(...a))
   }
 
-  private buildHeaders(): Record<string, string> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  private buildHeaders(json = true): Record<string, string> {
+    const headers: Record<string, string> = {}
+    if (json) headers['Content-Type'] = 'application/json'
     const token = this.getToken()
     // SECURITY: the token is read from storage and sent over the wire only.
     // It is never written to console, logs, or anywhere else.
@@ -111,7 +114,7 @@ export class ApiClient {
     try {
       response = await this.fetchImpl(`${this.baseUrl}${path}`, {
         method: 'GET',
-        headers: this.buildHeaders(),
+        headers: this.buildHeaders(false),
         signal: controller.signal,
       })
     } catch {
@@ -133,6 +136,27 @@ export class ApiClient {
     const disposition = response.headers.get('content-disposition') ?? ''
     const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? 'artifact'
     return { blob: await response.blob(), filename }
+  }
+
+  private async requestForm<T>(path: string, form: FormData): Promise<T> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs)
+    let response: Response
+    try {
+      response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+        method: 'POST', headers: this.buildHeaders(false), body: form, signal: controller.signal,
+      })
+    } catch {
+      throw new ApiError(NETWORK_ERROR_STATUS, { message: 'Network request failed. Please check your connection.' })
+    } finally {
+      clearTimeout(timer)
+    }
+    if (!response.ok) {
+      let parsed: unknown = null
+      try { parsed = await response.json() } catch { /* status-only fallback */ }
+      throw mapError(response.status, parsed)
+    }
+    return (await response.json()) as T
   }
 
   // ----- Auth -----
@@ -157,6 +181,25 @@ export class ApiClient {
 
   getOverview(projectId: string): Promise<ProjectOverview> {
     return this.request<ProjectOverview>('GET', API_PATHS.overview(projectId))
+  }
+
+  // ----- Project files -----
+
+  listProjectFiles(projectId: string): Promise<ProjectFileEntry[]> {
+    return this.request('GET', API_PATHS.files(projectId))
+  }
+
+  uploadProjectFile(projectId: string, file: File, taskFile = false): Promise<UploadResult> {
+    const form = new FormData()
+    form.append('file', file, file.name)
+    form.append('task_file', String(taskFile))
+    return this.requestForm(API_PATHS.files(projectId), form)
+  }
+
+  downloadProjectFile(projectId: string, relativePath: string): Promise<{ blob: Blob; filename: string }> {
+    const sourcePrefix = 'source/'
+    const filename = relativePath.startsWith(sourcePrefix) ? relativePath.slice(sourcePrefix.length) : relativePath
+    return this.requestBlob(API_PATHS.downloadFile(projectId, filename))
   }
 
   // ----- Runs -----

@@ -56,6 +56,7 @@ from app.schemas.models import (  # noqa: F401
     TaskUpdate,
     TokenResponse,
     UploadResult,
+    ProjectFileEntry,
     UserProfile,
 )
 
@@ -115,5 +116,6 @@ __all__ = (
     "TaskUpdate",
     "TokenResponse",
     "UploadResult",
+    "ProjectFileEntry",
     "UserProfile",
 )

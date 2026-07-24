@@ -219,4 +219,10 @@ td {
 .actions button { background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 7px 10px; cursor: pointer; }
 .actions button:disabled { opacity: .55; cursor: not-allowed; }
 .run-error { color: #ffd9d9; overflow-wrap: anywhere; }
+.upload-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.file-button, .text-button { background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 7px 10px; cursor: pointer; font: inherit; font-size: 14px; }
+.file-button input { display: none; }
+.state { font-size: 13px; }
+.state-indexed { color: var(--ok); }
+.state-uploaded { color: var(--muted); }
 @media (max-width: 700px) { .run-layout { grid-template-columns: 1fr; } .card-title { align-items: flex-start; flex-direction: column; } }

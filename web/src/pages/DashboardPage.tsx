@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ErrorBanner, LoadingBlock, EmptyState, PageHeader } from '../components/feedback'
+import { MaterialLibrary } from '../components/MaterialLibrary'
 import type { Project, ProjectOverview, RunProgress, RunState, RunStatus } from '../api/dto'
 
 const ACTIVE_RUN_STATUSES: RunStatus[] = [
@@ -155,6 +156,7 @@ export function DashboardPage() {
       {loading ? <LoadingBlock label="Loading accessible projects…" /> : null}
       {!loading && projects.length === 0 ? <EmptyState title="No accessible projects" hint="Ask an administrator to add you to a project." /> : null}
       {selectedId && overview ? <OverviewView overview={overview} /> : null}
+      {selectedId ? <MaterialLibrary projectId={selectedId} /> : null}
       {selectedId ? (
         <RunCenter projectId={selectedId} runs={runs} selectedRun={selectedRun} progress={progress}
           actionPending={actionPending} onStart={startRun} onSelect={setSelectedRunId}
