@@ -50,6 +50,7 @@ models/
 *.safetensors
 
 # ===== Misc =====
+node_modules/
 *.log
 tmp/
 temp/
