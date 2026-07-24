@@ -122,14 +122,16 @@ def evaluate_tasks(
 
 
 async def evaluate_tasks_with_llm(
-    tasks: list[Task], evidence_by_task: dict[str, list[Evidence]], settings: Settings
+    tasks: list[Task], evidence_by_task: dict[str, list[Evidence]], settings: Settings, *, project_id: str
 ) -> list[TaskEvaluation]:
     """Keep status rule-owned while using the configured chat model for explanations."""
     client = LLMClient(settings)
     evaluations: list[TaskEvaluation] = []
     for task in tasks:
         evidence = evidence_by_task.get(task.task_id, [])
-        internal = await evaluate_with_llm(_to_record(task), [item.excerpt for item in evidence], client)
+        internal = await evaluate_with_llm(
+            _to_record(task), [item.excerpt for item in evidence], client, project_id=project_id
+        )
         evaluations.append(_to_evaluation(task, evidence, internal))
     return evaluations
 
