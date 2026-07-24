@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse, StreamingResponse
 
 from app.observability.error_codes import get_error
@@ -20,9 +20,14 @@ from app.services.runs import (
     retry_run,
 )
 from app.security.paths import ensure_project_path
+from app.security.permissions import require_project_api_role
 
 
-router = APIRouter(prefix="/api/projects/{project_id}/runs", tags=["runs"])
+router = APIRouter(
+    prefix="/api/projects/{project_id}/runs",
+    tags=["runs"],
+    dependencies=[Depends(require_project_api_role("guest"))],
+)
 
 
 # ---------------------------------------------------------------------------
@@ -30,7 +35,7 @@ router = APIRouter(prefix="/api/projects/{project_id}/runs", tags=["runs"])
 # ---------------------------------------------------------------------------
 
 
-@router.post("", response_model=RunState, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=RunState, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_project_api_role("member"))])
 def create(project_id: str, request: Request) -> RunState:
     try:
         return create_run(request.app.state.settings, project_id)
@@ -69,7 +74,7 @@ def list_project_runs(project_id: str, request: Request) -> list[RunState]:
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{run_id}/execute", response_model=RunState, status_code=status.HTTP_202_ACCEPTED)
+@router.post("/{run_id}/execute", response_model=RunState, status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(require_project_api_role("member"))])
 async def execute(project_id: str, run_id: str, request: Request) -> RunState:
     """Kick off background execution. Returns the queued RunState immediately."""
     try:
@@ -112,7 +117,7 @@ def progress(project_id: str, run_id: str, request: Request) -> RunProgress:
 # ---------------------------------------------------------------------------
 
 
-@router.delete("/{run_id}", response_model=RunState)
+@router.delete("/{run_id}", response_model=RunState, dependencies=[Depends(require_project_api_role("member"))])
 def cancel(project_id: str, run_id: str, request: Request) -> RunState:
     """Request cancellation of a running or queued run."""
     try:
@@ -128,7 +133,7 @@ def cancel(project_id: str, run_id: str, request: Request) -> RunState:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=err) from error
 
 
-@router.post("/{run_id}/retry", response_model=RunState, status_code=status.HTTP_201_CREATED)
+@router.post("/{run_id}/retry", response_model=RunState, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_project_api_role("member"))])
 def retry(project_id: str, run_id: str, request: Request) -> RunState:
     """Retry a failed or cancelled run.  Creates a new queued run."""
     try:

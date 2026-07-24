@@ -60,6 +60,16 @@ async def get_current_user(
     return user
 
 
+async def get_project_api_user(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict | None:
+    """Return a user for protected project APIs, honoring only an explicit test migration flag."""
+    if not request.app.state.settings.enforce_project_authorization:
+        return None
+    return await get_current_user(request, authorization)
+
+
 # ---------------------------------------------------------------------------
 # Role checking
 # ---------------------------------------------------------------------------
@@ -148,6 +158,26 @@ def require_any_project_role(*required_roles: str) -> Callable:
                 return
         raise HTTPException(status_code=403, detail=get_error("ACCESS_DENIED"))
 
+    return _guard
+
+
+def require_project_api_role(required_role: str) -> Callable:
+    """Project-role guard for formerly unauthenticated core API routes.
+
+    Production defaults to enforcement. The configuration bypass is deliberately
+    explicit and is used only while legacy API tests are migrated.
+    """
+    async def _guard(
+        project_id: str,
+        request: Request,
+        user: dict | None = Depends(get_project_api_user),
+    ) -> None:
+        if not request.app.state.settings.enforce_project_authorization:
+            return
+        assert user is not None
+        role = get_project_role(request.app.state.db_path, project_id, user["user_id"])
+        if not has_min_role(role, required_role):
+            raise HTTPException(status_code=403, detail=get_error("ACCESS_DENIED"))
     return _guard
 
 

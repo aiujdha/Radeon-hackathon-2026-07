@@ -132,6 +132,10 @@ class Settings(BaseSettings):
     # system administrators, independent of per-project roles.
     system_admin_usernames: list[str] = Field(default_factory=lambda: ["admin"])
 
+    # Project, file, and run APIs are protected by default. The flag exists
+    # solely for isolated legacy-test migration; deployments must keep it true.
+    enforce_project_authorization: bool = Field(default=True)
+
     @field_validator("llm_base_url", "embedding_base_url")
     @classmethod
     def require_openai_v1_endpoint(cls, value: HttpUrl) -> HttpUrl:

@@ -7,21 +7,16 @@ from fastapi.responses import FileResponse
 
 from app.observability.error_codes import get_error
 from app.schemas.models import UploadResult
-from app.security.permissions import get_current_user, get_project_role, has_min_role
+from app.security.permissions import get_current_user, require_project_api_role
 from app.services.files import UploadConflictError, UploadValidationError, save_project_upload
 from app.services.projects import ProjectNotFoundError
 
 
-router = APIRouter(prefix="/api/projects/{project_id}/files", tags=["files"])
-
-
-def _check_file_permission(
-    db_path: str, project_id: str, user: dict, required_role: str = "member"
-) -> None:
-    """Check if a user has the required role for file access."""
-    role = get_project_role(db_path, project_id, user["user_id"])
-    if not has_min_role(role, required_role):
-        raise HTTPException(status_code=403, detail=get_error("ACCESS_DENIED_FILE_DOWNLOAD"))
+router = APIRouter(
+    prefix="/api/projects/{project_id}/files",
+    tags=["files"],
+    dependencies=[Depends(require_project_api_role("member"))],
+)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -56,16 +51,12 @@ async def download_file(
     project_id: str,
     filename: str,
     request: Request,
-    user: dict = Depends(get_current_user),
+    _: dict = Depends(get_current_user),
 ):
     """Download a file from a project. Requires authenticated user with member+ role.
 
     Guest users cannot download files.
     """
-    db_path = getattr(request.app.state, "db_path", None)
-    if db_path:
-        _check_file_permission(db_path, project_id, user)
-
     settings = request.app.state.settings
     project_dir = Path(settings.projects_dir) / project_id
     file_path = (project_dir / "files" / filename).resolve()
