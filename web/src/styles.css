@@ -225,4 +225,37 @@ td {
 .state { font-size: 13px; }
 .state-indexed { color: var(--ok); }
 .state-uploaded { color: var(--muted); }
+/* Task workbench (UI-2) */
+.tab-bar { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.tab { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 7px; padding: 7px 12px; cursor: pointer; font-size: 14px; }
+.tab.selected { color: var(--text); border-color: var(--accent); }
+.filter-bar { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+.filter-bar label { display: grid; gap: 4px; color: var(--muted); font-size: 13px; }
+.filter-bar select, .filter-bar input { padding: 7px 9px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.task-layout { display: grid; grid-template-columns: minmax(300px, 1.1fr) minmax(280px, 0.9fr); gap: 16px; margin-top: 10px; align-items: start; }
+.task-layout tbody tr { cursor: pointer; }
+.task-layout tbody tr.selected-row td { background: var(--panel-2); }
+.task-detail { background: var(--panel-2); border-radius: 8px; padding: 14px; }
+.task-detail h3, .task-detail h4 { margin: 0 0 8px; }
+.task-detail h4 { margin-top: 16px; }
+.task-detail dl { display: grid; grid-template-columns: 110px 1fr; gap: 6px; margin: 10px 0; }
+.task-detail dt { color: var(--muted); }
+.task-detail dd { margin: 0; overflow-wrap: anywhere; }
+.transition-form { display: grid; gap: 8px; }
+.transition-form select, .transition-form textarea { padding: 8px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+.history-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.history-list li { background: var(--panel-2); border-radius: 7px; padding: 8px 10px; display: grid; gap: 2px; }
+.history-list span, .history-list small { color: var(--muted); }
+.queue-item { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 10px 0; }
+.queue-summary { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.queue-form { display: grid; gap: 8px; margin-top: 10px; }
+.queue-form textarea, .queue-form input { padding: 8px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+.import-preview { display: grid; gap: 12px; margin-top: 12px; }
+.import-options { align-items: center; }
+.import-options label { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 14px; }
+.audit-details { overflow-wrap: anywhere; max-width: 320px; }
+.status-completed { color: var(--ok); }
+.status-cancelled, .status-delayed { color: var(--danger); }
+.status-pending_confirmation { color: #f7c948; }
+@media (max-width: 760px) { .task-layout { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .run-layout { grid-template-columns: 1fr; } .card-title { align-items: flex-start; flex-direction: column; } }
