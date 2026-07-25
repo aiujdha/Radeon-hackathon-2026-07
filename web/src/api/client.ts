@@ -10,6 +10,18 @@ import type {
   RunState,
   ProjectFileEntry,
   UploadResult,
+  TaskRecord,
+  TaskCreate,
+  TaskUpdate,
+  TaskStatusTransition,
+  TaskChangeRecord,
+  ConfirmationRecord,
+  ConfirmationAction,
+  TaskImportDiff,
+  TaskImportResult,
+  OperationAuditRecord,
+  TaskExtractionRequest,
+  TaskExtractionResult,
 } from './dto'
 
 export interface ApiClientOptions {
@@ -238,5 +250,91 @@ export class ApiClient {
     artifactName: string,
   ): Promise<{ blob: Blob; filename: string }> {
     return this.requestBlob(API_PATHS.runArtifact(projectId, runId, artifactName))
+  }
+
+  // ----- Tasks (UI-2: task workbench & human confirmation) -----
+
+  listTasks(projectId: string, status?: string): Promise<TaskRecord[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : ''
+    return this.request('GET', `${API_PATHS.tasks(projectId)}${query}`)
+  }
+
+  getTask(projectId: string, taskId: string): Promise<TaskRecord> {
+    return this.request('GET', API_PATHS.taskDetail(projectId, taskId))
+  }
+
+  createTask(projectId: string, body: TaskCreate): Promise<TaskRecord> {
+    return this.request('POST', API_PATHS.tasks(projectId), body)
+  }
+
+  updateTask(projectId: string, taskId: string, body: TaskUpdate): Promise<TaskRecord> {
+    return this.request('PATCH', API_PATHS.taskDetail(projectId, taskId), body)
+  }
+
+  /** Request a status change. The SERVER decides validity; invalid moves
+   * surface as ApiError (TASK_INVALID_TRANSITION / TASK_CANCELLED_FINAL). */
+  transitionTask(
+    projectId: string,
+    taskId: string,
+    body: TaskStatusTransition,
+  ): Promise<TaskRecord> {
+    return this.request('POST', API_PATHS.taskTransition(projectId, taskId), body)
+  }
+
+  getTaskHistory(projectId: string, taskId: string): Promise<TaskChangeRecord[]> {
+    return this.request('GET', API_PATHS.taskHistory(projectId, taskId))
+  }
+
+  listConfirmationQueue(
+    projectId: string,
+    status?: 'pending' | 'accepted' | 'ignored',
+  ): Promise<ConfirmationRecord[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : ''
+    return this.request('GET', `${API_PATHS.taskConfirmationQueue(projectId)}${query}`)
+  }
+
+  processConfirmation(
+    projectId: string,
+    taskId: string,
+    body: ConfirmationAction,
+  ): Promise<ConfirmationRecord> {
+    return this.request('POST', API_PATHS.taskConfirmation(projectId, taskId), body)
+  }
+
+  getTaskAuditLog(projectId: string, limit = 100): Promise<OperationAuditRecord[]> {
+    return this.request('GET', `${API_PATHS.taskAuditLog(projectId)}?limit=${limit}`)
+  }
+
+  extractTasks(projectId: string, body: TaskExtractionRequest): Promise<TaskExtractionResult> {
+    return this.request('POST', API_PATHS.taskExtract(projectId), body)
+  }
+
+  submitCandidates(
+    projectId: string,
+    body: TaskExtractionResult,
+  ): Promise<ConfirmationRecord[]> {
+    return this.request('POST', API_PATHS.taskSubmitCandidates(projectId), body)
+  }
+
+  /** Dry-run preview of a CSV/XLSX import — nothing is persisted server-side. */
+  previewTaskImport(projectId: string, file: File): Promise<TaskImportDiff> {
+    const form = new FormData()
+    form.append('file', file, file.name)
+    return this.requestForm(API_PATHS.taskImportPreview(projectId), form)
+  }
+
+  confirmTaskImport(
+    projectId: string,
+    file: File,
+    confirmedBy: string,
+    skipDuplicates = true,
+    overwriteConflicts = false,
+  ): Promise<TaskImportResult> {
+    const form = new FormData()
+    form.append('file', file, file.name)
+    form.append('confirmed_by', confirmedBy)
+    form.append('skip_duplicates', String(skipDuplicates))
+    form.append('overwrite_conflicts', String(overwriteConflicts))
+    return this.requestForm(API_PATHS.taskImportConfirm(projectId), form)
   }
 }

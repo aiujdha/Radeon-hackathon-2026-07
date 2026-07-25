@@ -185,6 +185,29 @@ export interface RunProgress {
 // Tasks
 // ---------------------------------------------------------------------------
 
+// Mirrors backend enum `PhaseFTaskStatus` (app/schemas/models.py).
+export type PhaseFTaskStatus =
+  | 'pending_confirmation'
+  | 'not_started'
+  | 'in_progress'
+  | 'mostly_completed'
+  | 'completed'
+  | 'delayed'
+  | 'cancelled'
+
+// Mirrors backend `ALLOWED_TRANSITIONS` (app/schemas/task_sql.py). The UI only
+// OFFERS these targets; the server remains the single authority and still
+// rejects invalid transitions with TASK_INVALID_TRANSITION / TASK_CANCELLED_FINAL.
+export const TASK_ALLOWED_TRANSITIONS: Record<PhaseFTaskStatus, PhaseFTaskStatus[]> = {
+  pending_confirmation: ['not_started', 'cancelled'],
+  not_started: ['in_progress', 'cancelled', 'delayed'],
+  in_progress: ['mostly_completed', 'completed', 'delayed', 'cancelled'],
+  mostly_completed: ['completed', 'in_progress', 'delayed'],
+  completed: [],
+  delayed: ['in_progress', 'completed', 'cancelled'],
+  cancelled: [],
+}
+
 // maps: TaskRecord
 export interface TaskRecord {
   id: string
@@ -215,6 +238,125 @@ export interface TaskCreate {
   dependencies: string[]
   source_ref: string | null
   status: string
+}
+
+// maps: TaskUpdate
+export interface TaskUpdate {
+  title?: string | null
+  owner?: string | null
+  due_date?: string | null
+  priority?: string | null
+  acceptance_criteria?: string | null
+  dependencies?: string[] | null
+  source_ref?: string | null
+}
+
+// maps: TaskStatusTransition
+export interface TaskStatusTransition {
+  status: PhaseFTaskStatus
+  reason: string
+  changed_by: string | null
+}
+
+// maps: TaskChangeRecord
+export interface TaskChangeRecord {
+  id: number
+  task_id: string
+  project_id: string
+  from_status: string | null
+  to_status: string
+  changed_by: string | null
+  change_reason: string | null
+  changed_at: string
+}
+
+// maps: CandidateTask
+export interface CandidateTask {
+  title: string
+  owner: string | null
+  due_date: string | null
+  priority: string | null
+  acceptance_criteria: string | null
+  dependencies: string[]
+  source_ref: string | null
+  source_kind: string
+  confidence: number
+}
+
+// maps: ConfirmationRecord
+export interface ConfirmationRecord {
+  id: number
+  task_id: string
+  project_id: string
+  candidate_title: string
+  candidate_owner: string | null
+  candidate_due_date: string | null
+  candidate_priority: string | null
+  candidate_acceptance: string | null
+  candidate_dependencies: string[]
+  source_ref: string | null
+  source_kind: string
+  confidence: number
+  status: 'pending' | 'accepted' | 'ignored'
+  confirmed_by: string | null
+  confirmation_basis: string | null
+  confirmation_notes: string | null
+  confirmed_at: string | null
+  created_at: string
+}
+
+// maps: ConfirmationAction
+export interface ConfirmationAction {
+  action: 'accept' | 'modify' | 'ignore'
+  confirmed_by: string
+  confirmation_basis?: string | null
+  confirmation_notes?: string | null
+  modified_title?: string | null
+  modified_owner?: string | null
+  modified_due_date?: string | null
+  modified_priority?: string | null
+  modified_acceptance?: string | null
+  modified_dependencies?: string[] | null
+}
+
+// maps: TaskImportDiff
+export interface TaskImportDiff {
+  new_rows: number
+  duplicate_rows: number
+  conflict_rows: number
+  preview: Record<string, string>[]
+}
+
+// maps: TaskImportResult
+export interface TaskImportResult {
+  imported: number
+  skipped: number
+  errors: number
+  details: string[]
+}
+
+// maps: OperationAuditRecord
+export interface OperationAuditRecord {
+  id: number
+  project_id: string
+  entity_type: string
+  entity_id: string
+  operation: string
+  operator: string | null
+  details: string | null
+  created_at: string
+}
+
+// maps: TaskExtractionRequest
+export interface TaskExtractionRequest {
+  source_text: string
+  source_kind: string
+  project_id: string
+}
+
+// maps: TaskExtractionResult
+export interface TaskExtractionResult {
+  candidates: CandidateTask[]
 }
 
 // ---------------------------------------------------------------------------
