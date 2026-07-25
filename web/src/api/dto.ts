@@ -255,7 +255,6 @@ export interface TaskUpdate {
 export interface TaskStatusTransition {
   status: PhaseFTaskStatus
   reason: string
-  changed_by: string | null
 }
 
 // maps: TaskChangeRecord
@@ -308,7 +307,6 @@ export interface ConfirmationRecord {
 // maps: ConfirmationAction
 export interface ConfirmationAction {
   action: 'accept' | 'modify' | 'ignore'
-  confirmed_by: string
   confirmation_basis?: string | null
   confirmation_notes?: string | null
   modified_title?: string | null

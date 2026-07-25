@@ -326,13 +326,11 @@ export class ApiClient {
   confirmTaskImport(
     projectId: string,
     file: File,
-    confirmedBy: string,
     skipDuplicates = true,
     overwriteConflicts = false,
   ): Promise<TaskImportResult> {
     const form = new FormData()
     form.append('file', file, file.name)
-    form.append('confirmed_by', confirmedBy)
     form.append('skip_duplicates', String(skipDuplicates))
     form.append('overwrite_conflicts', String(overwriteConflicts))
     return this.requestForm(API_PATHS.taskImportConfirm(projectId), form)

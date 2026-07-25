@@ -32,10 +32,10 @@
 - The UI offers only targets from the mirrored transition graph; the server
   performs the authoritative check and the UI surfaces
   `TASK_INVALID_TRANSITION` / `TASK_CANCELLED_FINAL` rejections verbatim.
-- A transition requires a non-empty reason; the operator identity is taken
-  from the signed-in user and sent as `changed_by`.
+- A transition requires a non-empty reason. The browser does not submit an
+  audit actor; the API records the authenticated username as `changed_by`.
 - Import preview is a dry run: the server persists nothing until the
-  confirm request, which records `confirmed_by` and the duplicate/conflict
+  confirm request, which records the authenticated `confirmed_by` actor and the duplicate/conflict
   handling flags.
 - Confirmation decisions require a signed-in operator; the queue disables
   submission without one.
@@ -44,10 +44,11 @@
 
 - All task requests carry the Bearer token of the signed-in user; the UI
   renders only project-scoped API data.
-- Known gap (unchanged by this stage): the backend task routes validate
-  project existence but do not yet enforce per-role authorization; role
-  enforcement remains a backend follow-up and the UI adds no false claim of
-  it.
+- The API requires project guest access for reads and project member access
+  for writes, so direct API calls cannot bypass the UI's permission boundary.
+- The lifecycle currently stores a source reference and confirmation basis,
+  not structured evidence excerpts. A future evidence API is required before
+  showing excerpt-level evidence.
 
 ## Rollback
 

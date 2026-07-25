@@ -3,7 +3,7 @@
 ## Goal
 
 Extend the authenticated project workbench with a task workbench. A member can
-review tasks with filters, inspect a task's acceptance criteria, evidence and
+review tasks with filters, inspect a task's acceptance criteria, source reference and
 change history, import a CSV/XLSX task list through an explicit
 preview-then-confirm flow, decide on extracted candidate tasks in a
 confirmation queue, and drive status changes that the server alone validates.
@@ -14,7 +14,7 @@ Every decision records who made it, when, and on what basis.
 - The task list can be narrowed by status (server-side query) and by owner,
   priority and due date (client-side refinement of server data).
 - A task detail view shows status, acceptance criteria, dependencies, source
-  reference, confirmation evidence and the full change history (who / when /
+  reference, confirmation basis and the full change history (who / when /
   why) as recorded by the backend.
 - A CSV/XLSX import always shows the server-computed diff (new / duplicate /
   conflict rows plus a row preview) before anything is persisted; the import

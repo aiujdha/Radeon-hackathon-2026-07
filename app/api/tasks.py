@@ -48,6 +48,7 @@ from app.schemas.models import (
 from app.services.task_lifecycle import TaskLifecycleService
 from app.services.projects import ProjectNotFoundError, get_project
 from app.security.paths import validate_project_id
+from app.security.permissions import get_project_api_user, require_project_api_role
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,10 @@ def _validate_project_scope(project_id: str, request: Request) -> None:
 
 router = APIRouter(
     tags=["Phase F — Task Lifecycle"],
-    dependencies=[Depends(_validate_project_scope)],
+    dependencies=[
+        Depends(_validate_project_scope),
+        Depends(require_project_api_role("guest")),
+    ],
 )
 
 
@@ -93,12 +97,22 @@ def _err(code: str, status: int = 400) -> HTTPException:
     return HTTPException(status_code=status, detail=detail)
 
 
+def _authenticated_actor(user: dict | None, submitted_actor: str | None = None) -> str | None:
+    """Use the signed-in identity for audit data, never a browser claim."""
+    return str(user["username"]) if user is not None else submitted_actor
+
+
 # ============================================================================
 # Static-path routes (MUST come before dynamic {task_id} routes)
 # ============================================================================
 
 
-@router.post("/api/projects/{project_id}/tasks", response_model=TaskRecord, status_code=201)
+@router.post(
+    "/api/projects/{project_id}/tasks",
+    response_model=TaskRecord,
+    status_code=201,
+    dependencies=[Depends(require_project_api_role("member"))],
+)
 def create_task(project_id: str, body: TaskCreate, request: Request):
     """Create a new task. If created with *pending_confirmation* status,
     it enters the confirmation queue automatically."""
@@ -141,11 +155,19 @@ def list_confirmation_queue(project_id: str, request: Request, status: str | Non
 @router.post(
     "/api/projects/{project_id}/tasks/confirmation/{task_id}",
     response_model=ConfirmationRecord,
+    dependencies=[Depends(require_project_api_role("member"))],
 )
-def process_confirmation(project_id: str, task_id: str, body: ConfirmationAction, request: Request):
+def process_confirmation(
+    project_id: str,
+    task_id: str,
+    body: ConfirmationAction,
+    request: Request,
+    user: dict | None = Depends(get_project_api_user),
+):
     """Process a confirmation action (accept / modify / ignore)."""
     try:
         svc = _get_service(request, project_id)
+        body = body.model_copy(update={"confirmed_by": _authenticated_actor(user, body.confirmed_by)})
         return svc.process_confirmation(project_id, task_id, body)
     except LookupError:
         raise _err("CONFIRMATION_NOT_FOUND", 404)
@@ -179,6 +201,7 @@ def get_audit_log(project_id: str, request: Request, limit: int = 100):
 @router.post(
     "/api/projects/{project_id}/tasks/extract",
     response_model=TaskExtractionResult,
+    dependencies=[Depends(require_project_api_role("member"))],
 )
 def extract_tasks(project_id: str, body: TaskExtractionRequest, request: Request):
     """Extract candidate tasks from unstructured text (meeting notes,
@@ -195,6 +218,7 @@ def extract_tasks(project_id: str, body: TaskExtractionRequest, request: Request
     "/api/projects/{project_id}/tasks/submit-candidates",
     response_model=list[ConfirmationRecord],
     status_code=201,
+    dependencies=[Depends(require_project_api_role("member"))],
 )
 def submit_candidates(project_id: str, body: TaskExtractionResult, request: Request):
     """Submit extracted candidates to the confirmation queue."""
@@ -212,6 +236,7 @@ def submit_candidates(project_id: str, body: TaskExtractionResult, request: Requ
 @router.post(
     "/api/projects/{project_id}/tasks/import-preview",
     response_model=TaskImportDiff,
+    dependencies=[Depends(require_project_api_role("member"))],
 )
 async def preview_import(project_id: str, request: Request, file: UploadFile = File(...)):
     """Preview a CSV or XLSX import: returns diff with new/duplicate/conflict
@@ -243,14 +268,16 @@ async def preview_import(project_id: str, request: Request, file: UploadFile = F
     "/api/projects/{project_id}/tasks/import-confirm",
     response_model=TaskImportResult,
     status_code=201,
+    dependencies=[Depends(require_project_api_role("member"))],
 )
 async def confirm_import(
     project_id: str,
     request: Request,
     file: UploadFile = File(...),
-    confirmed_by: str = Form(...),
+    confirmed_by: str | None = Form(default=None),
     skip_duplicates: bool = Form(True),
     overwrite_conflicts: bool = Form(False),
+    user: dict | None = Depends(get_project_api_user),
 ):
     """Confirm and execute a CSV/XLSX import. Use after preview_import."""
     if not file.filename:
@@ -269,7 +296,7 @@ async def confirm_import(
         svc = _get_service(request, project_id)
         _, candidates = svc.preview_import(project_id, content, file.filename)
         confirm = TaskImportConfirm(
-            confirmed_by=confirmed_by,
+            confirmed_by=_authenticated_actor(user, confirmed_by),
             skip_duplicates=skip_duplicates,
             overwrite_conflicts=overwrite_conflicts,
         )
@@ -297,7 +324,11 @@ def get_task(project_id: str, task_id: str, request: Request):
         raise _err("INTERNAL_ERROR", 500)
 
 
-@router.patch("/api/projects/{project_id}/tasks/{task_id}", response_model=TaskRecord)
+@router.patch(
+    "/api/projects/{project_id}/tasks/{task_id}",
+    response_model=TaskRecord,
+    dependencies=[Depends(require_project_api_role("member"))],
+)
 def update_task(project_id: str, task_id: str, body: TaskUpdate, request: Request):
     """Update mutable fields of a task."""
     try:
@@ -316,11 +347,19 @@ def update_task(project_id: str, task_id: str, body: TaskUpdate, request: Reques
 @router.post(
     "/api/projects/{project_id}/tasks/{task_id}/transition",
     response_model=TaskRecord,
+    dependencies=[Depends(require_project_api_role("member"))],
 )
-def transition_task(project_id: str, task_id: str, body: TaskStatusTransition, request: Request):
+def transition_task(
+    project_id: str,
+    task_id: str,
+    body: TaskStatusTransition,
+    request: Request,
+    user: dict | None = Depends(get_project_api_user),
+):
     """Transition a task's status via the allowed state machine."""
     try:
         svc = _get_service(request, project_id)
+        body = body.model_copy(update={"changed_by": _authenticated_actor(user, body.changed_by)})
         return svc.transition_status(project_id, task_id, body)
     except LookupError:
         raise _err("TASK_NOT_FOUND", 404)

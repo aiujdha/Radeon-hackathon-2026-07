@@ -91,7 +91,7 @@ export function TaskWorkbench({ projectId }: { projectId: string }) {
       {loading ? <LoadingBlock label="Loading task workbench…" /> : null}
       {!loading && tab === 'tasks' ? (
         <TaskListPanel projectId={projectId} tasks={tasks} statusFilter={statusFilter}
-          onStatusFilter={setStatusFilter} operator={user?.username ?? ''} onChanged={load} />
+          onStatusFilter={setStatusFilter} onChanged={load} />
       ) : null}
       {!loading && tab === 'queue' ? (
         <ConfirmationQueuePanel projectId={projectId} queue={queue}
@@ -109,9 +109,9 @@ export function TaskWorkbench({ projectId }: { projectId: string }) {
 // Tasks: list + client-side filters + detail (history, transitions)
 // ---------------------------------------------------------------------------
 
-function TaskListPanel({ projectId, tasks, statusFilter, onStatusFilter, operator, onChanged }: {
+function TaskListPanel({ projectId, tasks, statusFilter, onStatusFilter, onChanged }: {
   projectId: string; tasks: TaskRecord[]; statusFilter: string
-  onStatusFilter: (value: string) => void; operator: string; onChanged: () => Promise<void>
+  onStatusFilter: (value: string) => void; onChanged: () => Promise<void>
 }) {
   const [ownerFilter, setOwnerFilter] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
@@ -186,7 +186,7 @@ function TaskListPanel({ projectId, tasks, statusFilter, onStatusFilter, operato
           </table>
           {selectedTask ? (
             <TaskDetail key={selectedTask.id} projectId={projectId} task={selectedTask}
-              operator={operator} onChanged={onChanged} />
+              onChanged={onChanged} />
           ) : <p className="muted">Select a task to inspect details, history and status transitions.</p>}
         </div>
       )}
@@ -194,8 +194,8 @@ function TaskListPanel({ projectId, tasks, statusFilter, onStatusFilter, operato
   )
 }
 
-function TaskDetail({ projectId, task, operator, onChanged }: {
-  projectId: string; task: TaskRecord; operator: string; onChanged: () => Promise<void>
+function TaskDetail({ projectId, task, onChanged }: {
+  projectId: string; task: TaskRecord; onChanged: () => Promise<void>
 }) {
   const { client } = useAuth()
   const [history, setHistory] = useState<TaskChangeRecord[]>([])
@@ -226,7 +226,6 @@ function TaskDetail({ projectId, task, operator, onChanged }: {
       await client.transitionTask(projectId, task.id, {
         status: target as PhaseFTaskStatus,
         reason: reason.trim(),
-        changed_by: operator || null,
       })
       setTarget('')
       setReason('')
@@ -332,7 +331,6 @@ function ConfirmationQueuePanel({ projectId, queue, operator, onChanged }: {
     try {
       await client.processConfirmation(projectId, item.task_id, {
         action,
-        confirmed_by: operator,
         confirmation_basis: basis.trim() || null,
         confirmation_notes: notes.trim() || null,
         ...(action === 'modify'
@@ -452,7 +450,7 @@ function ImportPanel({ projectId, operator, onImported }: {
     setPending(true)
     setError(null)
     try {
-      setResult(await client.confirmTaskImport(projectId, file, operator, skipDuplicates, overwriteConflicts))
+      setResult(await client.confirmTaskImport(projectId, file, skipDuplicates, overwriteConflicts))
       setDiff(null)
       setFile(null)
       await onImported()

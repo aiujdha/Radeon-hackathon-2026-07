@@ -90,15 +90,15 @@ describe('ApiClient task CRUD & lifecycle', () => {
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({ owner: 'carol', priority: 'P0' })
   })
 
-  it('requests a transition with status, reason and changed_by', async () => {
+  it('requests a transition with status and reason while the server owns the actor', async () => {
     const { client, calls } = makeClient(() => jsonResponse({ ...TASK, status: 'completed' }))
     await client.transitionTask('demo-project', 't-1', {
-      status: 'completed', reason: 'all acceptance criteria met', changed_by: 'alice',
+      status: 'completed', reason: 'all acceptance criteria met',
     })
     expect(calls[0].url).toBe('/api/projects/demo-project/tasks/t-1/transition')
     const body = JSON.parse(String(calls[0].init?.body))
     expect(body).toEqual({
-      status: 'completed', reason: 'all acceptance criteria met', changed_by: 'alice',
+      status: 'completed', reason: 'all acceptance criteria met',
     })
   })
 
@@ -112,7 +112,7 @@ describe('ApiClient task CRUD & lifecycle', () => {
       },
     }, 400))
     const attempt = client.transitionTask('demo-project', 't-1', {
-      status: 'in_progress', reason: 'reopen', changed_by: null,
+      status: 'in_progress', reason: 'reopen',
     })
     await expect(attempt).rejects.toMatchObject({
       name: 'ApiError', status: 400, errorCode: 'TASK_INVALID_TRANSITION',
@@ -125,7 +125,7 @@ describe('ApiClient task CRUD & lifecycle', () => {
       error_code: 'TASK_CANCELLED_FINAL', message: 'final', user_message: 'Cancelled is final.',
     }, 400))
     await expect(client.transitionTask('demo-project', 't-1', {
-      status: 'in_progress', reason: 'reopen', changed_by: null,
+      status: 'in_progress', reason: 'reopen',
     })).rejects.toMatchObject({ errorCode: 'TASK_CANCELLED_FINAL' })
   })
 
@@ -157,7 +157,7 @@ describe('ApiClient confirmation queue', () => {
     )
   })
 
-  it('records an accept decision with operator and basis', async () => {
+  it('records an accept decision with basis while the server owns the operator', async () => {
     const { client, calls } = makeClient(() => jsonResponse({
       id: 7, task_id: 't-9', project_id: 'demo-project', candidate_title: 'Draft plan',
       candidate_owner: null, candidate_due_date: null, candidate_priority: null,
@@ -168,18 +168,18 @@ describe('ApiClient confirmation queue', () => {
       created_at: '2026-07-23T10:00:00Z',
     }))
     await client.processConfirmation('demo-project', 't-9', {
-      action: 'accept', confirmed_by: 'alice', confirmation_basis: 'agreed in weekly sync',
+      action: 'accept', confirmation_basis: 'agreed in weekly sync',
     })
     expect(calls[0].url).toBe('/api/projects/demo-project/tasks/confirmation/t-9')
     const body = JSON.parse(String(calls[0].init?.body))
     expect(body.action).toBe('accept')
-    expect(body.confirmed_by).toBe('alice')
+    expect(body.confirmed_by).toBeUndefined()
   })
 
   it('sends modified fields when the decision is modify', async () => {
     const { client, calls } = makeClient(() => jsonResponse({}, 200))
     await client.processConfirmation('demo-project', 't-9', {
-      action: 'modify', confirmed_by: 'alice', modified_title: 'Draft Q3 plan',
+      action: 'modify', modified_title: 'Draft Q3 plan',
       modified_owner: 'bob', modified_due_date: '2026-08-01', modified_priority: 'P2',
     })
     const body = JSON.parse(String(calls[0].init?.body))
@@ -196,7 +196,7 @@ describe('ApiClient confirmation queue', () => {
       },
     }, 400))
     await expect(client.processConfirmation('demo-project', 't-9', {
-      action: 'ignore', confirmed_by: 'alice',
+      action: 'ignore',
     })).rejects.toMatchObject({ errorCode: 'CONFIRMATION_ALREADY_PROCESSED' })
   })
 })
@@ -255,17 +255,17 @@ describe('ApiClient task import (multipart)', () => {
     expect(diff.new_rows).toBe(2)
   })
 
-  it('confirms an import with operator identity and both flags', async () => {
+  it('confirms an import with flags while the server owns operator identity', async () => {
     const { client, calls } = makeClient(() => jsonResponse({
       imported: 2, skipped: 1, errors: 0, details: [],
     }, 201))
     await client.confirmTaskImport(
       'demo-project', new File(['title\nA'], 'tasks.csv', { type: 'text/csv' }),
-      'alice', false, true,
+      false, true,
     )
     expect(calls[0].url).toBe('/api/projects/demo-project/tasks/import-confirm')
     const form = calls[0].init?.body as FormData
-    expect(form.get('confirmed_by')).toBe('alice')
+    expect(form.get('confirmed_by')).toBeNull()
     expect(form.get('skip_duplicates')).toBe('false')
     expect(form.get('overwrite_conflicts')).toBe('true')
     expect(form.get('file')).toBeInstanceOf(File)

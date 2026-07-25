@@ -34,7 +34,8 @@ passed.
 ## Covered behavior
 
 - Task list filtering (status server-side; owner/priority/due client-side).
-- Task detail with acceptance criteria, evidence, confirmation info, history.
+- Task detail with acceptance criteria, source reference, confirmation basis,
+  and history.
 - Preview-then-confirm CSV/XLSX import with duplicate/conflict flags.
 - Confirmation queue accept / modify / ignore with operator, basis, notes.
 - Lifecycle mirror pinned to the backend graph; server stays authoritative.
@@ -42,7 +43,9 @@ passed.
 
 ## Cloud verification boundary
 
-Role-based authorization on the backend task routes is not yet enforced
-server-side; the UI makes no claim of it. Real XLSX parsing was exercised via
-the backend's existing import pipeline tests; browser-level manual testing on
-a deployed instance remains a follow-up.
+Backend task routes require project guest access for reads and project member
+access for writes. Confirmation, import confirmation, and status-transition
+audit identities are derived from the authenticated server-side user, not a
+browser-supplied value. Real XLSX parsing was exercised via the backend's
+existing import pipeline tests; browser-level manual testing on a deployed
+instance remains a follow-up.
