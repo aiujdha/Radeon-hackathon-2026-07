@@ -348,7 +348,9 @@ class ConfirmationRecord(BaseModel):
 class ConfirmationAction(BaseModel):
     """Request model for a confirmation action (accept / modify / ignore)."""
     action: str = Field(pattern="^(accept|modify|ignore)$")
-    confirmed_by: str = Field(min_length=1, max_length=120)
+    # API handlers overwrite this with the signed-in actor. It is optional
+    # only for isolated legacy service callers.
+    confirmed_by: str | None = Field(default=None, max_length=120)
     confirmation_basis: str | None = Field(default=None, max_length=1000)
     confirmation_notes: str | None = Field(default=None, max_length=4000)
     modified_title: str | None = Field(default=None, max_length=500)
@@ -369,7 +371,7 @@ class TaskImportDiff(BaseModel):
 
 class TaskImportConfirm(BaseModel):
     """Request model for confirming an import."""
-    confirmed_by: str = Field(min_length=1, max_length=120)
+    confirmed_by: str | None = Field(default=None, max_length=120)
     skip_duplicates: bool = True
     overwrite_conflicts: bool = False
 
