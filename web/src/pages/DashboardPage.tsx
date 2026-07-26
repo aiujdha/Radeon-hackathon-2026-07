@@ -160,6 +160,7 @@ export function DashboardPage() {
       {loading ? <LoadingBlock label="Loading accessible projects…" /> : null}
       {!loading && projects.length === 0 ? <EmptyState title="No accessible projects" hint="Ask an administrator to add you to a project." /> : null}
       {selectedId && overview ? <OverviewView overview={overview} /> : null}
+      <AdminOperations />
       {selectedId ? <MaterialLibrary projectId={selectedId} /> : null}
       {selectedId ? <TaskWorkbench projectId={selectedId} /> : null}
       {selectedId ? <RiskReportCenter projectId={selectedId} /> : null}
@@ -172,7 +173,6 @@ export function DashboardPage() {
           onRetry={() => selectedRun && void runAction(() => client.retryRun(selectedId, selectedRun.run_id))}
           onDownload={downloadArtifact} />
       ) : null}
-      <AdminOperations />
     </div>
   )
 }
