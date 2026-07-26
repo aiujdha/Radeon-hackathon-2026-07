@@ -25,6 +25,7 @@ import type {
   RiskCenterEntry, RiskAssignmentRequest, RiskLifecycleUpdate,
   ReportDraftEntry, ReportDraftCreate, ReportDraftUpdate, ReportApprovalRequest, ReportApprovalEntry,
   ProjectMemberEntry, ProjectMemberAdd, CommentCreate, CommentEntry, NotificationEntry,
+  ScmPreviewRequest, ScmPreviewResponse, IntegrationExecutionResult, AdminHealth, QueueMetrics, CacheMetrics, BackupEntry,
 } from './dto'
 
 export interface ApiClientOptions {
@@ -418,5 +419,35 @@ export class ApiClient {
 
   markAllNotificationsRead(): Promise<{ marked_read: number }> {
     return this.request('PUT', API_PATHS.notificationReadAll)
+  }
+
+  // ----- Controlled integrations and system operations (UI-5) -----
+
+  previewScmChange(body: ScmPreviewRequest): Promise<ScmPreviewResponse> {
+    return this.request('POST', API_PATHS.scmPreview, body)
+  }
+
+  executeScmChange(body: ScmPreviewRequest, confirmationId: string): Promise<IntegrationExecutionResult> {
+    return this.request('POST', API_PATHS.scmExecute, { ...body, confirmation_id: confirmationId })
+  }
+
+  getAdminHealth(): Promise<AdminHealth> {
+    return this.request('GET', API_PATHS.monitorHealth)
+  }
+
+  getAdminQueue(): Promise<QueueMetrics> {
+    return this.request('GET', API_PATHS.monitorQueue)
+  }
+
+  getAdminCache(): Promise<CacheMetrics> {
+    return this.request('GET', API_PATHS.monitorCache)
+  }
+
+  listBackups(): Promise<BackupEntry[]> {
+    return this.request('GET', API_PATHS.adminBackups)
+  }
+
+  invalidateCache(body: { project_id?: string; category?: 'index' | 'embedding' | 'report'; key_prefix?: string }): Promise<{ removed: number }> {
+    return this.request('POST', API_PATHS.monitorInvalidateCache, body)
   }
 }

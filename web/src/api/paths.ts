@@ -87,4 +87,16 @@ export const API_PATHS = {
   notificationUnreadCount: '/notifications/unread-count',
   notificationReadAll: '/notifications/read-all',
   notificationRead: (notificationId: string) => `/notifications/${notificationId}/read`,
+
+  // Controlled integrations (prefix: /api/integrations). Preview routes never
+  // write to an external system; execute routes require their one-time ID.
+  scmPreview: '/api/integrations/scm/preview',
+  scmExecute: '/api/integrations/scm/execute',
+
+  // Operations (system administrator only; prefix: /monitor and /admin).
+  monitorHealth: '/monitor/health',
+  monitorQueue: '/monitor/queue',
+  monitorCache: '/monitor/cache',
+  monitorInvalidateCache: '/monitor/cache/invalidate',
+  adminBackups: '/admin/backup',
 } as const

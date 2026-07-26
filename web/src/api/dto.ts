@@ -499,6 +499,80 @@ export interface NotificationEntry {
 }
 
 // ---------------------------------------------------------------------------
+// Controlled integrations and operations (UI-5)
+// ---------------------------------------------------------------------------
+
+export interface ScmChangeItem {
+  title: string
+  body?: string
+  labels?: string[]
+}
+
+export interface ScmPreviewRequest {
+  project_id: string
+  target: 'github_issues' | 'jira'
+  operation: 'create' | 'update'
+  items: ScmChangeItem[]
+}
+
+export interface ScmPreviewResponse {
+  ok: boolean
+  preview: Omit<ScmPreviewRequest, 'project_id'>
+  confirmation_id: string
+}
+
+export interface IntegrationExecutionResult {
+  ok: boolean
+  summary: string
+  details: Record<string, unknown>
+}
+
+export interface QueueMetrics {
+  active_llm_calls: number
+  active_embedding_calls: number
+  queued_calls: number
+  total_completed: number
+  total_cancelled: number
+  total_timeouts: number
+  total_errors: number
+  global_llm_capacity: number
+  global_embedding_capacity: number
+}
+
+export interface CacheMetrics {
+  enabled: boolean
+  size: number
+  max_entries: number
+  hits: number
+  misses: number
+  hit_rate: number
+  evictions: number
+  ttls: Record<string, number>
+}
+
+export interface AdminHealth {
+  status: string
+  issues: Array<{ code?: string; message?: string }>
+  gpu_metrics: Array<{ device_id: number; name: string; vram_total_mb: number; vram_used_mb: number; utilization_pct: number; temperature_c: number }>
+  system_metrics: { disk_used_pct: number; disk_free_gb: number }
+  model_metadata: { model_name: string; quantization: string; context_size: number; backend: string }
+  llm_error_rate: number
+  queue_status: QueueMetrics
+  cache_stats: CacheMetrics
+  timestamp: number
+}
+
+export interface BackupEntry {
+  backup_dir: string
+  name: string
+  timestamp: string
+  label: string
+  total_size_bytes: number
+  file_count: number
+  status: string
+}
+
+// ---------------------------------------------------------------------------
 // Shared error body (mirrors backend `ErrorDetail`)
 // ---------------------------------------------------------------------------
 
