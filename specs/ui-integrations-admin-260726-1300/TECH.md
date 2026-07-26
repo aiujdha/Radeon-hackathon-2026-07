@@ -1,5 +1,8 @@
 # UI-5 Technical Specification
 
+- Level: S2
+- Status: implemented
+
 ## Backend boundary
 
 - All `/monitor/*` routes use `require_system_admin` at router level.
