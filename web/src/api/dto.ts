@@ -361,7 +361,7 @@ export interface TaskExtractionResult {
 // Risk
 // ---------------------------------------------------------------------------
 
-export type RiskLifecycle = 'open' | 'acknowledged' | 'resolved' | 'ignored' | 'rejected'
+export type RiskLifecycle = 'active' | 'acknowledged' | 'resolved' | 'dismissed' | 'expired'
 
 // maps: RiskCenterEntry
 export interface RiskCenterEntry {
@@ -378,11 +378,24 @@ export interface RiskCenterEntry {
   updated_at: string
 }
 
+// maps: RiskAssignmentRequest
+export interface RiskAssignmentRequest {
+  risk_id: string
+  assignee_user_id: string
+}
+
+// maps: RiskLifecycleUpdate
+export interface RiskLifecycleUpdate {
+  action: 'acknowledge' | 'resolve' | 'dismiss' | 'reopen'
+  note: string
+  actor?: string
+}
+
 // ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 
-export type ReportDraftStatus = 'draft' | 'published' | 'archived'
+export type ReportDraftStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'archived'
 
 // maps: ReportDraftEntry
 export interface ReportDraftEntry {
@@ -394,6 +407,71 @@ export interface ReportDraftEntry {
   status: ReportDraftStatus
   author_id: string
   author_name: string
+  created_at: string
+  updated_at: string
+}
+
+// maps: ReportDraftCreate
+export interface ReportDraftCreate {
+  title: string
+  content_md: string
+}
+
+// maps: ReportDraftUpdate
+export interface ReportDraftUpdate {
+  title?: string
+  content_md?: string
+}
+
+// maps: ReportApprovalRequest
+export interface ReportApprovalRequest {
+  decision: 'approved' | 'rejected' | 'request_changes'
+  comment: string
+}
+
+export interface ReportApprovalEntry {
+  id: string
+  report_id: string
+  approver_id: string
+  approver_name: string
+  decision: string
+  comment: string
+  created_at: string
+}
+
+// maps: ProjectMemberEntry
+export interface ProjectMemberEntry {
+  id: string
+  project_id: string
+  user_id: string
+  username: string
+  display_name: string
+  role: 'admin' | 'pm' | 'member' | 'guest'
+  joined_at: string
+}
+
+// maps: CommentCreate
+export interface CommentCreate {
+  entity_type: 'task' | 'risk' | 'report_section' | 'report'
+  entity_id: string
+  body: string
+  parent_id?: string | null
+  mentions?: string[]
+}
+
+// maps: CommentEntry
+export interface CommentEntry {
+  id: string
+  project_id: string
+  entity_type: string
+  entity_id: string
+  author_id: string
+  author_name: string
+  parent_id: string | null
+  body: string
+  is_resolved: boolean
+  mentions: string[]
+  replies: CommentEntry[]
   created_at: string
   updated_at: string
 }

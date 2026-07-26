@@ -65,11 +65,21 @@ export const API_PATHS = {
 
   // Risks (prefix: /projects/{project_id}/risks)
   risks: (projectId: string) => `/projects/${projectId}/risks`,
+  riskAssign: (projectId: string, riskId: string) => `/projects/${projectId}/risks/${riskId}/assign`,
+  riskLifecycle: (projectId: string, riskId: string) => `/projects/${projectId}/risks/${riskId}/lifecycle`,
 
   // Reports (prefix: /projects/{project_id}/reports)
   reports: (projectId: string) => `/projects/${projectId}/reports`,
   reportDetail: (projectId: string, draftId: string) =>
     `/projects/${projectId}/reports/${draftId}`,
+  reportSubmit: (projectId: string, draftId: string) => `/projects/${projectId}/reports/${draftId}/submit`,
+  reportApprove: (projectId: string, draftId: string) => `/projects/${projectId}/reports/${draftId}/approve`,
+  reportApprovals: (projectId: string, draftId: string) => `/projects/${projectId}/reports/${draftId}/approvals`,
+  reportPdf: (projectId: string, draftId: string) => `/projects/${projectId}/reports/${draftId}/export/pdf`,
+  reportDocx: (projectId: string, draftId: string) => `/projects/${projectId}/reports/${draftId}/export/docx`,
+
+  members: (projectId: string) => `/projects/${projectId}/members`,
+  comments: (projectId: string) => `/projects/${projectId}/comments`,
 
   // Notifications (prefix: /notifications)
   notifications: '/notifications',

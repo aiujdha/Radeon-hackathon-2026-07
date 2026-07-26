@@ -22,6 +22,9 @@ import type {
   OperationAuditRecord,
   TaskExtractionRequest,
   TaskExtractionResult,
+  RiskCenterEntry, RiskAssignmentRequest, RiskLifecycleUpdate,
+  ReportDraftEntry, ReportDraftCreate, ReportDraftUpdate, ReportApprovalRequest, ReportApprovalEntry,
+  ProjectMemberEntry, CommentCreate, CommentEntry,
 } from './dto'
 
 export interface ApiClientOptions {
@@ -334,5 +337,62 @@ export class ApiClient {
     form.append('skip_duplicates', String(skipDuplicates))
     form.append('overwrite_conflicts', String(overwriteConflicts))
     return this.requestForm(API_PATHS.taskImportConfirm(projectId), form)
+  }
+
+  // ----- Risks, reports, and project discussion (UI-3) -----
+
+  listRisks(projectId: string, severity?: string, lifecycle?: string): Promise<RiskCenterEntry[]> {
+    const query = new URLSearchParams()
+    if (severity) query.set('severity', severity)
+    if (lifecycle) query.set('lifecycle', lifecycle)
+    return this.request('GET', `${API_PATHS.risks(projectId)}${query.size ? `?${query}` : ''}`)
+  }
+
+  assignRisk(projectId: string, riskId: string, body: RiskAssignmentRequest): Promise<Record<string, string>> {
+    return this.request('PUT', API_PATHS.riskAssign(projectId, riskId), body)
+  }
+
+  updateRiskLifecycle(projectId: string, riskId: string, body: RiskLifecycleUpdate): Promise<Record<string, string>> {
+    return this.request('PUT', API_PATHS.riskLifecycle(projectId, riskId), body)
+  }
+
+  listReportDrafts(projectId: string, status?: string): Promise<ReportDraftEntry[]> {
+    return this.request('GET', `${API_PATHS.reports(projectId)}${status ? `?status=${encodeURIComponent(status)}` : ''}`)
+  }
+
+  createReportDraft(projectId: string, body: ReportDraftCreate): Promise<ReportDraftEntry> {
+    return this.request('POST', API_PATHS.reports(projectId), body)
+  }
+
+  updateReportDraft(projectId: string, draftId: string, body: ReportDraftUpdate): Promise<ReportDraftEntry> {
+    return this.request('PUT', API_PATHS.reportDetail(projectId, draftId), body)
+  }
+
+  submitReport(projectId: string, draftId: string): Promise<ReportDraftEntry> {
+    return this.request('POST', API_PATHS.reportSubmit(projectId, draftId))
+  }
+
+  decideReport(projectId: string, draftId: string, body: ReportApprovalRequest): Promise<ReportDraftEntry> {
+    return this.request('POST', API_PATHS.reportApprove(projectId, draftId), body)
+  }
+
+  getReportApprovals(projectId: string, draftId: string): Promise<ReportApprovalEntry[]> {
+    return this.request('GET', API_PATHS.reportApprovals(projectId, draftId))
+  }
+
+  downloadReport(projectId: string, draftId: string, format: 'pdf' | 'docx'): Promise<{ blob: Blob; filename: string }> {
+    return this.requestBlob(format === 'pdf' ? API_PATHS.reportPdf(projectId, draftId) : API_PATHS.reportDocx(projectId, draftId))
+  }
+
+  listMembers(projectId: string): Promise<ProjectMemberEntry[]> {
+    return this.request('GET', API_PATHS.members(projectId))
+  }
+
+  listComments(projectId: string, entityType: string, entityId: string): Promise<CommentEntry[]> {
+    return this.request('GET', `${API_PATHS.comments(projectId)}?entity_type=${encodeURIComponent(entityType)}&entity_id=${encodeURIComponent(entityId)}`)
+  }
+
+  createComment(projectId: string, body: CommentCreate): Promise<CommentEntry> {
+    return this.request('POST', API_PATHS.comments(projectId), body)
   }
 }
