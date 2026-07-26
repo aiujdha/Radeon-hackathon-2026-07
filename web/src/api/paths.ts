@@ -79,8 +79,12 @@ export const API_PATHS = {
   reportDocx: (projectId: string, draftId: string) => `/projects/${projectId}/reports/${draftId}/export/docx`,
 
   members: (projectId: string) => `/projects/${projectId}/members`,
+  memberDetail: (projectId: string, userId: string) => `/projects/${projectId}/members/${userId}`,
   comments: (projectId: string) => `/projects/${projectId}/comments`,
 
   // Notifications (prefix: /notifications)
   notifications: '/notifications',
+  notificationUnreadCount: '/notifications/unread-count',
+  notificationReadAll: '/notifications/read-all',
+  notificationRead: (notificationId: string) => `/notifications/${notificationId}/read`,
 } as const

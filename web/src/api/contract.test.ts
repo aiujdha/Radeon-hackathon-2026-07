@@ -43,6 +43,7 @@ const EXPECTED_MAPPED = [
   'ReportDraftUpdate',
   'ReportApprovalRequest',
   'ProjectMemberEntry',
+  'ProjectMemberAdd',
   'CommentCreate',
   'CommentEntry',
   'NotificationEntry',

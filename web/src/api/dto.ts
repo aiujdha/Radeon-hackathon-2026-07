@@ -450,6 +450,12 @@ export interface ProjectMemberEntry {
   joined_at: string
 }
 
+// maps: ProjectMemberAdd
+export interface ProjectMemberAdd {
+  user_id: string
+  role: 'admin' | 'pm' | 'member' | 'guest'
+}
+
 // maps: CommentCreate
 export interface CommentCreate {
   entity_type: 'task' | 'risk' | 'report_section' | 'report'

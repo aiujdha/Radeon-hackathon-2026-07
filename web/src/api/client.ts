@@ -24,7 +24,7 @@ import type {
   TaskExtractionResult,
   RiskCenterEntry, RiskAssignmentRequest, RiskLifecycleUpdate,
   ReportDraftEntry, ReportDraftCreate, ReportDraftUpdate, ReportApprovalRequest, ReportApprovalEntry,
-  ProjectMemberEntry, CommentCreate, CommentEntry,
+  ProjectMemberEntry, ProjectMemberAdd, CommentCreate, CommentEntry, NotificationEntry,
 } from './dto'
 
 export interface ApiClientOptions {
@@ -388,11 +388,35 @@ export class ApiClient {
     return this.request('GET', API_PATHS.members(projectId))
   }
 
+  addMember(projectId: string, body: ProjectMemberAdd): Promise<ProjectMemberEntry> {
+    return this.request('POST', API_PATHS.members(projectId), body)
+  }
+
+  updateMemberRole(projectId: string, userId: string, body: ProjectMemberAdd): Promise<ProjectMemberEntry> {
+    return this.request('PUT', API_PATHS.memberDetail(projectId, userId), body)
+  }
+
+  removeMember(projectId: string, userId: string): Promise<void> {
+    return this.request('DELETE', API_PATHS.memberDetail(projectId, userId))
+  }
+
   listComments(projectId: string, entityType: string, entityId: string): Promise<CommentEntry[]> {
     return this.request('GET', `${API_PATHS.comments(projectId)}?entity_type=${encodeURIComponent(entityType)}&entity_id=${encodeURIComponent(entityId)}`)
   }
 
   createComment(projectId: string, body: CommentCreate): Promise<CommentEntry> {
     return this.request('POST', API_PATHS.comments(projectId), body)
+  }
+
+  listNotifications(unreadOnly = false, limit = 50): Promise<NotificationEntry[]> {
+    return this.request('GET', `${API_PATHS.notifications}?unread_only=${unreadOnly}&limit=${limit}`)
+  }
+
+  markNotificationRead(notificationId: string): Promise<NotificationEntry> {
+    return this.request('PUT', API_PATHS.notificationRead(notificationId))
+  }
+
+  markAllNotificationsRead(): Promise<{ marked_read: number }> {
+    return this.request('PUT', API_PATHS.notificationReadAll)
   }
 }
