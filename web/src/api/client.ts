@@ -5,6 +5,7 @@ import type {
   TokenResponse,
   UserProfile,
   Project,
+  ProjectCreate,
   ProjectOverview,
   RunProgress,
   RunState,
@@ -189,6 +190,10 @@ export class ApiClient {
 
   listProjects(): Promise<Project[]> {
     return this.request<Project[]>('GET', API_PATHS.projects)
+  }
+
+  createProject(body: ProjectCreate): Promise<Project> {
+    return this.request<Project>('POST', API_PATHS.projects, body)
   }
 
   getProject(projectId: string): Promise<Project> {
