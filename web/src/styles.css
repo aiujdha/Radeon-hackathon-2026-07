@@ -39,6 +39,13 @@ a {
   font-size: 16px;
 }
 
+.app-version {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  margin-left: 0.35rem;
+}
+
 .topnav .user {
   display: flex;
   align-items: center;
