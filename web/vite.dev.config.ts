@@ -11,6 +11,9 @@ const API_TARGET = process.env.VITE_API_TARGET || 'http://localhost:9000'
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '0.1.0'),
+  },
   server: {
     port: 5173,
     proxy: {
