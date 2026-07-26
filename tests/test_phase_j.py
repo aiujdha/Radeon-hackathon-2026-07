@@ -676,6 +676,15 @@ def test_monitor_endpoint_requires_authentication(tmp_path):
         assert client.get("/monitor/queue").status_code == 401
 
 
+def test_monitor_endpoint_requires_system_admin(tmp_path):
+    settings = Settings(sqlite_path=tmp_path / "projectpack.db")
+    with TestClient(create_app(settings=settings)) as client:
+        login = client.post("/auth/login", json={"username": "member", "password": "member123"})
+        assert login.status_code == 200
+        client.headers.update({"Authorization": f"Bearer {login.json()['access_token']}"})
+        assert client.get("/monitor/queue").status_code == 403
+
+
 def test_monitor_queue_endpoint(monitor_client):
     resp = monitor_client.get("/monitor/queue")
     assert resp.status_code == 200

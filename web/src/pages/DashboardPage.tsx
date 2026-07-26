@@ -5,6 +5,7 @@ import { MaterialLibrary } from '../components/MaterialLibrary'
 import { TaskWorkbench } from '../components/TaskWorkbench'
 import { RiskReportCenter } from '../components/RiskReportCenter'
 import { CollaborationCenter } from '../components/CollaborationCenter'
+import { AdminOperations, IntegrationAdminCenter } from '../components/IntegrationAdminCenter'
 import type { Project, ProjectOverview, RunProgress, RunState, RunStatus } from '../api/dto'
 
 const ACTIVE_RUN_STATUSES: RunStatus[] = [
@@ -163,6 +164,7 @@ export function DashboardPage() {
       {selectedId ? <TaskWorkbench projectId={selectedId} /> : null}
       {selectedId ? <RiskReportCenter projectId={selectedId} /> : null}
       {selectedId ? <CollaborationCenter projectId={selectedId} /> : null}
+      {selectedId ? <IntegrationAdminCenter projectId={selectedId} /> : null}
       {selectedId ? (
         <RunCenter projectId={selectedId} runs={runs} selectedRun={selectedRun} progress={progress}
           actionPending={actionPending} onStart={startRun} onSelect={setSelectedRunId}
@@ -170,6 +172,7 @@ export function DashboardPage() {
           onRetry={() => selectedRun && void runAction(() => client.retryRun(selectedId, selectedRun.run_id))}
           onDownload={downloadArtifact} />
       ) : null}
+      <AdminOperations />
     </div>
   )
 }
