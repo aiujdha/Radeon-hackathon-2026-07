@@ -77,6 +77,21 @@ describe('ApiClient.request', () => {
     await client.login({ username: 'alice', password: 'pw' })
     expect(JSON.parse(body)).toEqual({ username: 'alice', password: 'pw' })
   })
+
+  it('creates a project through the authenticated projects endpoint', async () => {
+    let seen: Captured | undefined
+    const client = new ApiClient({
+      getToken: () => 'tok-123',
+      fetchImpl: recordingFetch((request) => {
+        seen = request
+        return jsonResponse(201, { project_id: 'release-demo', name: 'Release demo', description: null, created_at: '', status: 'created', source_file_count: 0, failed_file_count: 0 })
+      }),
+    })
+    await client.createProject({ project_id: 'release-demo', name: 'Release demo', description: null })
+    expect(seen?.url).toBe('/api/projects')
+    expect(seen?.method).toBe('POST')
+    expect(JSON.parse(seen?.body ?? '{}')).toMatchObject({ project_id: 'release-demo' })
+  })
 })
 
 describe('ApiClient error mapping', () => {

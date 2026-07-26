@@ -6,7 +6,7 @@ import { TaskWorkbench } from '../components/TaskWorkbench'
 import { RiskReportCenter } from '../components/RiskReportCenter'
 import { CollaborationCenter } from '../components/CollaborationCenter'
 import { AdminOperations, IntegrationAdminCenter } from '../components/IntegrationAdminCenter'
-import type { Project, ProjectOverview, RunProgress, RunState, RunStatus } from '../api/dto'
+import type { Project, ProjectCreate, ProjectOverview, RunProgress, RunState, RunStatus } from '../api/dto'
 
 const ACTIVE_RUN_STATUSES: RunStatus[] = [
   'queued', 'scanning', 'indexing', 'retrieving', 'evaluating', 'drafting', 'waiting_confirmation',
@@ -156,6 +156,11 @@ export function DashboardPage() {
         </select>
       </PageHeader>
 
+      <ProjectCreator onCreated={async (project) => {
+        await loadProjects()
+        setSelectedId(project.project_id)
+      }} />
+
       {error ? <ErrorBanner error={error} onRetry={() => selectedId ? void loadProjectData(selectedId) : void loadProjects()} /> : null}
       {loading ? <LoadingBlock label="Loading accessible projects…" /> : null}
       {!loading && projects.length === 0 ? <EmptyState title="No accessible projects" hint="Ask an administrator to add you to a project." /> : null}
@@ -175,6 +180,43 @@ export function DashboardPage() {
       ) : null}
     </div>
   )
+}
+
+function ProjectCreator({ onCreated }: { onCreated: (project: Project) => Promise<void> }) {
+  const { client } = useAuth()
+  const [open, setOpen] = useState(false)
+  const [projectId, setProjectId] = useState('')
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  const submit = async () => {
+    const body: ProjectCreate = {
+      project_id: projectId.trim().toLowerCase(), name: name.trim(), description: description.trim() || null,
+    }
+    if (!body.project_id || !body.name) return
+    setPending(true); setError(null)
+    try {
+      const project = await client.createProject(body)
+      await onCreated(project)
+      setProjectId(''); setName(''); setDescription(''); setOpen(false)
+    } catch (cause) { setError(cause as Error) } finally { setPending(false) }
+  }
+
+  return <section className="project-creator" aria-label="Create project">
+    <button type="button" className="text-button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      {open ? 'Close project creation' : 'Create project'}
+    </button>
+    {open ? <div className="project-creator-form">
+      <h2>Create a project</h2><p className="muted">You become this project's administrator. Project ID must use lowercase letters, digits, and hyphens.</p>
+      {error ? <ErrorBanner error={error} onRetry={() => void submit()} /> : null}
+      <label>Project ID<input aria-label="Project ID" value={projectId} disabled={pending} onChange={(event) => setProjectId(event.target.value)} placeholder="e.g. product-launch" /></label>
+      <label>Project name<input aria-label="Project name" value={name} disabled={pending} onChange={(event) => setName(event.target.value)} placeholder="e.g. Product launch" /></label>
+      <label>Description <span className="muted">(optional)</span><textarea aria-label="Project description" value={description} disabled={pending} onChange={(event) => setDescription(event.target.value)} placeholder="Brief purpose and scope" /></label>
+      <div className="actions"><button type="button" className="primary" disabled={pending || !projectId.trim() || !name.trim()} onClick={() => void submit()}>Create project</button><button type="button" disabled={pending} onClick={() => setOpen(false)}>Cancel</button></div>
+    </div> : null}
+  </section>
 }
 
 function Stat({ value, label }: { value: number | string; label: string }) {
