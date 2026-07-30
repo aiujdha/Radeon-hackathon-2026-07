@@ -9,11 +9,11 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div>
       <nav className="topnav">
-        <span className="brand">Radeon Unified Workbench <small className="app-version" title="Frontend release version">v{appVersion}</small></span>
+        <span className="brand">ProjectPack 智能办公助手 <small className="app-version" title="前端发布版本">v{appVersion}</small></span>
         <span className="user">
-          <span>{user?.display_name ?? user?.username ?? 'Guest'}</span>
+          <span>{user?.display_name ?? user?.username ?? '访客'}</span>
           <button type="button" className="retry" onClick={logout}>
-            Sign out
+            退出登录
           </button>
         </span>
       </nav>

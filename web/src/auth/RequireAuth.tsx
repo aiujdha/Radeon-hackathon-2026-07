@@ -13,7 +13,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const location = useLocation()
 
   if (loading) {
-    return <FullScreenLoading label="Restoring your session…" />
+    return <FullScreenLoading label="正在恢复登录状态…" />
   }
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />

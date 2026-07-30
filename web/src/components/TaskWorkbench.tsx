@@ -13,13 +13,8 @@ import {
 } from '../api/dto'
 
 const STATUS_LABELS: Record<PhaseFTaskStatus, string> = {
-  pending_confirmation: 'Pending confirmation',
-  not_started: 'Not started',
-  in_progress: 'In progress',
-  mostly_completed: 'Mostly completed',
-  completed: 'Completed',
-  delayed: 'Delayed',
-  cancelled: 'Cancelled',
+  pending_confirmation: '待确认', not_started: '未开始', in_progress: '进行中',
+  mostly_completed: '基本完成', completed: '已完成', delayed: '已延期', cancelled: '已取消',
 }
 
 const STATUS_FILTER_OPTIONS: PhaseFTaskStatus[] = [
@@ -74,21 +69,20 @@ export function TaskWorkbench({ projectId }: { projectId: string }) {
   useEffect(() => { void load() }, [load])
 
   return (
-    <section className="card task-workbench" aria-label="Task workbench">
+    <section className="card task-workbench" aria-label="任务工作台">
       <div className="card-title">
         <div>
-          <h2>Task workbench</h2>
-          <p>Confirm extracted tasks, import task lists and drive status changes with an audit trail.</p>
+          <h2>任务工作台</h2><p>确认候选任务、导入任务表，并在审计记录下维护任务状态。</p>
         </div>
       </div>
-      <div className="tab-bar" role="tablist" aria-label="Task workbench sections">
-        <button type="button" role="tab" aria-selected={tab === 'tasks'} className={tab === 'tasks' ? 'tab selected' : 'tab'} onClick={() => setTab('tasks')}>Tasks ({tasks.length})</button>
-        <button type="button" role="tab" aria-selected={tab === 'queue'} className={tab === 'queue' ? 'tab selected' : 'tab'} onClick={() => setTab('queue')}>Confirmation queue ({queue.length})</button>
-        <button type="button" role="tab" aria-selected={tab === 'import'} className={tab === 'import' ? 'tab selected' : 'tab'} onClick={() => setTab('import')}>Import CSV/XLSX</button>
-        <button type="button" role="tab" aria-selected={tab === 'audit'} className={tab === 'audit' ? 'tab selected' : 'tab'} onClick={() => setTab('audit')}>Audit log</button>
+      <div className="tab-bar" role="tablist" aria-label="任务工作台分区">
+        <button type="button" role="tab" aria-selected={tab === 'tasks'} className={tab === 'tasks' ? 'tab selected' : 'tab'} onClick={() => setTab('tasks')}>任务（{tasks.length}）</button>
+        <button type="button" role="tab" aria-selected={tab === 'queue'} className={tab === 'queue' ? 'tab selected' : 'tab'} onClick={() => setTab('queue')}>待确认队列（{queue.length}）</button>
+        <button type="button" role="tab" aria-selected={tab === 'import'} className={tab === 'import' ? 'tab selected' : 'tab'} onClick={() => setTab('import')}>导入 CSV/XLSX</button>
+        <button type="button" role="tab" aria-selected={tab === 'audit'} className={tab === 'audit' ? 'tab selected' : 'tab'} onClick={() => setTab('audit')}>审计记录</button>
       </div>
       {error ? <ErrorBanner error={error} onRetry={() => void load()} /> : null}
-      {loading ? <LoadingBlock label="Loading task workbench…" /> : null}
+      {loading ? <LoadingBlock label="正在加载任务工作台…" /> : null}
       {!loading && tab === 'tasks' ? (
         <TaskListPanel projectId={projectId} tasks={tasks} statusFilter={statusFilter}
           onStatusFilter={setStatusFilter} onChanged={load} />
@@ -141,36 +135,36 @@ function TaskListPanel({ projectId, tasks, statusFilter, onStatusFilter, onChang
 
   return (
     <div>
-      <div className="filter-bar" aria-label="Task filters">
-        <label>Status
+      <div className="filter-bar" aria-label="任务筛选">
+        <label>状态
           <select value={statusFilter} onChange={(event) => onStatusFilter(event.target.value)}>
-            <option value="">All</option>
+            <option value="">全部</option>
             {STATUS_FILTER_OPTIONS.map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
           </select>
         </label>
-        <label>Owner
+        <label>负责人
           <select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>
-            <option value="">All</option>
+            <option value="">全部</option>
             {owners.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
           </select>
         </label>
-        <label>Priority
+        <label>优先级
           <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}>
-            <option value="">All</option>
+            <option value="">全部</option>
             {priorities.map((priority) => <option key={priority} value={priority}>{priority}</option>)}
           </select>
         </label>
-        <label>Due before
+        <label>截止日期早于
           <input type="date" value={dueBefore} onChange={(event) => setDueBefore(event.target.value)} />
         </label>
       </div>
       {visible.length === 0 ? (
-        <EmptyState title="No tasks match the current filters"
-          hint="Import a task list or accept candidates from the confirmation queue." />
+        <EmptyState title="没有符合当前筛选条件的任务"
+          hint="可导入任务表，或在待确认队列中接受候选任务。" />
       ) : (
         <div className="task-layout">
-          <table aria-label="Task list">
-            <thead><tr><th>Title</th><th>Status</th><th>Owner</th><th>Priority</th><th>Due</th></tr></thead>
+          <table aria-label="任务列表">
+            <thead><tr><th>任务名称</th><th>状态</th><th>负责人</th><th>优先级</th><th>截止日期</th></tr></thead>
             <tbody>
               {visible.map((task) => (
                 <tr key={task.id} className={task.id === selectedTaskId ? 'selected-row' : ''}
@@ -187,7 +181,7 @@ function TaskListPanel({ projectId, tasks, statusFilter, onStatusFilter, onChang
           {selectedTask ? (
             <TaskDetail key={selectedTask.id} projectId={projectId} task={selectedTask}
               onChanged={onChanged} />
-          ) : <p className="muted">Select a task to inspect details, history and status transitions.</p>}
+          ) : <p className="muted">选择一项任务可查看详情、变更历史和状态流转。</p>}
         </div>
       )}
     </div>
@@ -239,46 +233,38 @@ function TaskDetail({ projectId, task, onChanged }: {
   }
 
   return (
-    <div className="task-detail" aria-label="Task details">
+    <div className="task-detail" aria-label="任务详情">
       <h3>{task.title}</h3>
       <dl>
-        <dt>Status</dt><dd>{statusLabel(task.status)}</dd>
-        <dt>Owner</dt><dd>{task.owner ?? '—'}</dd>
-        <dt>Priority</dt><dd>{task.priority || '—'}</dd>
-        <dt>Due date</dt><dd>{task.due_date ?? '—'}</dd>
-        <dt>Acceptance</dt><dd>{task.acceptance_criteria || '—'}</dd>
-        <dt>Dependencies</dt><dd>{task.dependencies.length > 0 ? task.dependencies.join(', ') : '—'}</dd>
-        <dt>Source</dt><dd>{task.source_ref ?? '—'}</dd>
+        <dt>状态</dt><dd>{statusLabel(task.status)}</dd><dt>负责人</dt><dd>{task.owner ?? '—'}</dd><dt>优先级</dt><dd>{task.priority || '—'}</dd><dt>截止日期</dt><dd>{task.due_date ?? '—'}</dd><dt>验收标准</dt><dd>{task.acceptance_criteria || '—'}</dd><dt>依赖项</dt><dd>{task.dependencies.length > 0 ? task.dependencies.join(', ') : '—'}</dd><dt>来源</dt><dd>{task.source_ref ?? '—'}</dd>
         {task.confirmed_by ? (
           <>
-            <dt>Confirmed by</dt><dd>{task.confirmed_by} ({formatDate(task.confirmed_at)})</dd>
-            <dt>Basis</dt><dd>{task.confirmation_basis ?? '—'}</dd>
+            <dt>确认人</dt><dd>{task.confirmed_by}（{formatDate(task.confirmed_at)}）</dd><dt>确认依据</dt><dd>{task.confirmation_basis ?? '—'}</dd>
           </>
         ) : null}
-        <dt>Updated</dt><dd>{formatDate(task.updated_at)}</dd>
+        <dt>更新时间</dt><dd>{formatDate(task.updated_at)}</dd>
       </dl>
 
-      <h4>Change status</h4>
+      <h4>变更状态</h4>
       {targets.length === 0 ? (
-        <p className="muted">This task is in a final state — no transitions are allowed.</p>
+        <p className="muted">该任务已处于最终状态，不能继续流转。</p>
       ) : (
         <div className="transition-form">
-          <select aria-label="Target status" value={target} onChange={(event) => setTarget(event.target.value)}>
-            <option value="">Select target status…</option>
+          <select aria-label="目标状态" value={target} onChange={(event) => setTarget(event.target.value)}><option value="">请选择目标状态…</option>
             {targets.map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
           </select>
-          <textarea aria-label="Transition reason" placeholder="Reason (required, recorded in history)"
+          <textarea aria-label="状态变更原因" placeholder="变更原因（必填，会记录在历史中）"
             value={reason} rows={2} maxLength={2000}
             onChange={(event) => setReason(event.target.value)} />
           <button type="button" className="primary" disabled={pending || !target || !reason.trim()}
-            onClick={() => void submitTransition()}>Apply transition</button>
+            onClick={() => void submitTransition()}>确认变更</button>
         </div>
       )}
       {transitionError ? <ErrorBanner error={transitionError} /> : null}
 
-      <h4>History</h4>
+      <h4>变更历史</h4>
       {historyError ? <ErrorBanner error={historyError} onRetry={() => void loadHistory()} /> : null}
-      {history.length === 0 ? <p className="muted">No status changes recorded yet.</p> : (
+      {history.length === 0 ? <p className="muted">暂未记录状态变更。</p> : (
         <ul className="history-list">
           {history.map((entry) => (
             <li key={entry.id}>
@@ -352,55 +338,46 @@ function ConfirmationQueuePanel({ projectId, queue, operator, onChanged }: {
   }
 
   if (queue.length === 0) {
-    return <EmptyState title="Confirmation queue is empty"
-      hint="Candidates extracted from meeting minutes will wait here for a human decision." />
+    return <EmptyState title="待确认队列为空" hint="从会议纪要提取的候选任务会在这里等待人工确认。" />
   }
 
   return (
-    <div aria-label="Confirmation queue">
+    <div aria-label="待确认队列">
       {queue.map((item) => (
         <div key={item.id} className="queue-item">
           <div className="queue-summary">
             <div>
               <strong>{item.candidate_title}</strong>
               <p className="muted">
-                {item.candidate_owner ? `Owner: ${item.candidate_owner} · ` : ''}
-                {item.candidate_due_date ? `Due: ${item.candidate_due_date} · ` : ''}
-                Source: {item.source_kind}{item.source_ref ? ` (${item.source_ref})` : ''} ·
-                Confidence: {(item.confidence * 100).toFixed(0)}%
+                {item.candidate_owner ? `负责人：${item.candidate_owner} · ` : ''}{item.candidate_due_date ? `截止日期：${item.candidate_due_date} · ` : ''}来源：{item.source_kind}{item.source_ref ? `（${item.source_ref}）` : ''} · 置信度：{(item.confidence * 100).toFixed(0)}%
               </p>
-              {item.candidate_acceptance ? <p className="muted">Acceptance: {item.candidate_acceptance}</p> : null}
+              {item.candidate_acceptance ? <p className="muted">验收标准：{item.candidate_acceptance}</p> : null}
             </div>
             <button type="button" className="text-button" onClick={() => openId === item.id ? setOpenId(null) : openItem(item)}>
-              {openId === item.id ? 'Close' : 'Review'}
+              {openId === item.id ? '收起' : '审核'}
             </button>
           </div>
           {openId === item.id ? (
             <div className="queue-form">
               <div className="filter-bar">
-                <label>Decision
-                  <select aria-label="Decision" value={action} onChange={(event) => setAction(event.target.value as typeof action)}>
-                    <option value="accept">Accept as-is</option>
-                    <option value="modify">Accept with changes</option>
-                    <option value="ignore">Ignore</option>
+                <label>处理决定
+                  <select aria-label="处理决定" value={action} onChange={(event) => setAction(event.target.value as typeof action)}>
+                    <option value="accept">按原样接受</option><option value="modify">修改后接受</option><option value="ignore">忽略</option>
                   </select>
                 </label>
               </div>
               {action === 'modify' ? (
                 <div className="filter-bar">
-                  <label>Title<input value={modTitle} onChange={(event) => setModTitle(event.target.value)} /></label>
-                  <label>Owner<input value={modOwner} onChange={(event) => setModOwner(event.target.value)} /></label>
-                  <label>Due date<input type="date" value={modDue} onChange={(event) => setModDue(event.target.value)} /></label>
-                  <label>Priority<input value={modPriority} onChange={(event) => setModPriority(event.target.value)} /></label>
+                  <label>任务名称<input value={modTitle} onChange={(event) => setModTitle(event.target.value)} /></label><label>负责人<input value={modOwner} onChange={(event) => setModOwner(event.target.value)} /></label><label>截止日期<input type="date" value={modDue} onChange={(event) => setModDue(event.target.value)} /></label><label>优先级<input value={modPriority} onChange={(event) => setModPriority(event.target.value)} /></label>
                 </div>
               ) : null}
-              <textarea aria-label="Confirmation basis" placeholder="Basis / evidence for this decision"
+              <textarea aria-label="确认依据" placeholder="本次决定的依据或证据"
                 rows={2} value={basis} onChange={(event) => setBasis(event.target.value)} />
-              <textarea aria-label="Confirmation notes" placeholder="Notes (optional)"
+              <textarea aria-label="确认备注" placeholder="备注（可选）"
                 rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} />
-              {!operator ? <p className="muted">Sign-in identity is required to record the decision.</p> : null}
+              {!operator ? <p className="muted">需要登录身份才能记录该决定。</p> : null}
               <button type="button" className="primary" disabled={pending || !operator}
-                onClick={() => void submit(item)}>Record decision</button>
+                onClick={() => void submit(item)}>记录决定</button>
               {actionError ? <ErrorBanner error={actionError} /> : null}
             </div>
           ) : null}
@@ -464,25 +441,23 @@ function ImportPanel({ projectId, operator, onImported }: {
   const previewColumns = diff && diff.preview.length > 0 ? Object.keys(diff.preview[0]) : []
 
   return (
-    <div aria-label="Task import">
-      <p className="muted">Step 1: choose a CSV/XLSX file to preview the diff. Step 2: confirm to persist. Nothing is written before you confirm.</p>
+    <div aria-label="任务导入">
+      <p className="muted">第 1 步：选择 CSV/XLSX 文件预览差异。第 2 步：确认后才写入正式任务。</p>
       <div className="actions">
-        <label className="file-button">Choose task file
+        <label className="file-button">选择任务文件
           <input type="file" accept=".csv,.xlsx,.xls" disabled={pending} onChange={(event) => void pick(event)} />
         </label>
-        {file ? <span className="muted">Selected: {file.name}</span> : null}
+        {file ? <span className="muted">已选择：{file.name}</span> : null}
       </div>
-      {pending ? <LoadingBlock label="Talking to the server…" /> : null}
+      {pending ? <LoadingBlock label="正在请求服务端…" /> : null}
       {error ? <ErrorBanner error={error} /> : null}
       {diff ? (
         <div className="import-preview">
           <div className="grid">
-            <div className="stat"><div className="value">{diff.new_rows}</div><div className="label">New rows</div></div>
-            <div className="stat"><div className="value">{diff.duplicate_rows}</div><div className="label">Duplicates</div></div>
-            <div className="stat"><div className="value">{diff.conflict_rows}</div><div className="label">Conflicts</div></div>
+            <div className="stat"><div className="value">{diff.new_rows}</div><div className="label">新增行</div></div><div className="stat"><div className="value">{diff.duplicate_rows}</div><div className="label">重复行</div></div><div className="stat"><div className="value">{diff.conflict_rows}</div><div className="label">冲突行</div></div>
           </div>
           {diff.preview.length > 0 ? (
-            <table aria-label="Import preview rows">
+            <table aria-label="导入预览行">
               <thead><tr>{previewColumns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
               <tbody>
                 {diff.preview.map((row, index) => (
@@ -490,24 +465,22 @@ function ImportPanel({ projectId, operator, onImported }: {
                 ))}
               </tbody>
             </table>
-          ) : <p className="muted">The file contains no data rows.</p>}
+          ) : <p className="muted">文件不包含数据行。</p>}
           <div className="actions import-options">
             <label><input type="checkbox" checked={skipDuplicates}
-              onChange={(event) => setSkipDuplicates(event.target.checked)} /> Skip duplicates</label>
+              onChange={(event) => setSkipDuplicates(event.target.checked)} /> 跳过重复项</label>
             <label><input type="checkbox" checked={overwriteConflicts}
-              onChange={(event) => setOverwriteConflicts(event.target.checked)} /> Overwrite conflicts</label>
+              onChange={(event) => setOverwriteConflicts(event.target.checked)} /> 覆盖冲突项</label>
             <button type="button" className="primary" disabled={pending || !operator} onClick={() => void confirm()}>
-              Confirm import
+              确认导入
             </button>
           </div>
-          {!operator ? <p className="muted">Sign-in identity is required to confirm an import.</p> : null}
+          {!operator ? <p className="muted">需要登录身份才能确认导入。</p> : null}
         </div>
       ) : null}
       {result ? (
-        <div className="grid" aria-label="Import result">
-          <div className="stat"><div className="value">{result.imported}</div><div className="label">Imported</div></div>
-          <div className="stat"><div className="value">{result.skipped}</div><div className="label">Skipped</div></div>
-          <div className="stat"><div className="value">{result.errors}</div><div className="label">Errors</div></div>
+        <div className="grid" aria-label="导入结果">
+          <div className="stat"><div className="value">{result.imported}</div><div className="label">已导入</div></div><div className="stat"><div className="value">{result.skipped}</div><div className="label">已跳过</div></div><div className="stat"><div className="value">{result.errors}</div><div className="label">错误</div></div>
         </div>
       ) : null}
       {result && result.details.length > 0 ? (
@@ -542,14 +515,12 @@ function AuditPanel({ projectId }: { projectId: string }) {
   useEffect(() => { void load() }, [load])
 
   return (
-    <div aria-label="Audit log">
+    <div aria-label="审计记录">
       {error ? <ErrorBanner error={error} onRetry={() => void load()} /> : null}
-      {loading ? <LoadingBlock label="Loading audit log…" /> : records.length === 0 ? (
-        <EmptyState title="No audit entries yet"
-          hint="Task confirmations, imports and status changes are recorded here." />
+      {loading ? <LoadingBlock label="正在加载审计记录…" /> : records.length === 0 ? (
+        <EmptyState title="还没有审计记录" hint="任务确认、导入和状态变更都会记录在这里。" />
       ) : (
-        <table aria-label="Audit entries">
-          <thead><tr><th>When</th><th>Operation</th><th>Entity</th><th>Operator</th><th>Details</th></tr></thead>
+        <table aria-label="审计条目"><thead><tr><th>时间</th><th>操作</th><th>对象</th><th>操作人</th><th>详情</th></tr></thead>
           <tbody>
             {records.map((record) => (
               <tr key={record.id}>

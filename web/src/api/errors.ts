@@ -55,22 +55,22 @@ export class ApiError extends Error {
 export function defaultMessageFor(status: number): string {
   switch (status) {
     case NETWORK_ERROR_STATUS:
-      return 'Network error. Please check your connection and try again.'
+      return '网络连接失败，请检查网络后重试。'
     case 401:
-      return 'Your session has expired. Please sign in again.'
+      return '登录状态已过期，请重新登录。'
     case 403:
-      return 'You do not have permission to perform this action.'
+      return '你没有执行此操作的权限。'
     case 404:
-      return 'The requested resource was not found.'
+      return '未找到请求的资源。'
     case 409:
-      return 'This operation conflicts with the current state. Please refresh and retry.'
+      return '该操作与当前状态冲突，请刷新后重试。'
     case 422:
-      return 'The request was rejected because some fields were invalid.'
+      return '请求被拒绝，部分字段无效。'
     default:
       if (status >= 500) {
-        return 'The server encountered an error. Please try again later.'
+        return '服务器发生错误，请稍后重试。'
       }
-      return `Request failed (HTTP ${status}).`
+      return `请求失败（HTTP ${status}）。`
   }
 }
 

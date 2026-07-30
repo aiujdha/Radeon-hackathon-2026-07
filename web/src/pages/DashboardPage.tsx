@@ -14,10 +14,10 @@ const ACTIVE_RUN_STATUSES: RunStatus[] = [
 ]
 
 const ARTIFACT_LABELS: Record<string, string> = {
-  report: 'Markdown report',
-  risk_csv: 'Risk CSV',
-  next_week_plan: 'Next-week plan',
-  result: 'Run result',
+  report: '项目报告（Markdown）',
+  risk_csv: '风险清单（CSV）',
+  next_week_plan: '下周计划',
+  result: '运行结果（JSON）',
 }
 
 function isActive(status: RunStatus): boolean {
@@ -155,7 +155,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Project workbench">
+      <PageHeader title="项目工作台">
         {projects.length > 0 ? <select className="project-select" aria-label="选择项目" value={selectedId ?? ''}
           disabled={loading}
           onChange={(event) => setSelectedId(event.target.value)}>
@@ -169,7 +169,7 @@ export function DashboardPage() {
       }} />
 
       {error ? <ErrorBanner error={error} onRetry={() => selectedId ? void loadProjectData(selectedId) : void loadProjects()} /> : null}
-      {loading ? <LoadingBlock label="Loading accessible projects…" /> : null}
+      {loading ? <LoadingBlock label="正在加载可访问项目…" /> : null}
       {!loading && projects.length === 0 ? <EmptyState title="还没有可访问的项目" hint="从上方创建你的第一个项目；创建者会自动成为该项目管理员。" /> : null}
       {selectedId && overview ? <OverviewView overview={overview} /> : null}
       <AdminOperations />
@@ -235,12 +235,12 @@ function Stat({ value, label }: { value: number | string; label: string }) {
 }
 
 function OverviewView({ overview }: { overview: ProjectOverview }) {
-  return <section className="grid" aria-label="Project overview">
-    <Stat value={overview.task_stats.total ?? 0} label="Tasks" />
-    <Stat value={overview.task_stats.in_progress ?? 0} label="In progress" />
-    <Stat value={overview.task_stats.completed ?? 0} label="Completed" />
-    <Stat value={overview.risk_stats.total_active ?? 0} label="Active risks" />
-    <Stat value={overview.pending_confirmations} label="Pending confirmations" />
+  return <section className="grid" aria-label="项目概览">
+    <Stat value={overview.task_stats.total ?? 0} label="任务总数" />
+    <Stat value={overview.task_stats.in_progress ?? 0} label="进行中" />
+    <Stat value={overview.task_stats.completed ?? 0} label="已完成" />
+    <Stat value={overview.risk_stats.total_active ?? 0} label="未关闭风险" />
+    <Stat value={overview.pending_confirmations} label="待人工确认" />
   </section>
 }
 
@@ -248,10 +248,10 @@ function RunCenter({ projectId, runs, selectedRun, progress, actionPending, onSt
   projectId: string; runs: RunState[]; selectedRun: RunState | null; progress: RunProgress | null; actionPending: boolean
   onStart: () => void; onSelect: (runId: string) => void; onCancel: () => void; onRetry: () => void; onDownload: (name: string) => void
 }) {
-  return <section className="card run-center" aria-label="Run center">
-    <div className="card-title"><div><h2>Run center</h2><p>Project: {projectId}</p></div><button type="button" className="primary" disabled={actionPending} onClick={onStart}>Generate report</button></div>
-    {runs.length === 0 ? <EmptyState title="No runs yet" hint="Start a report run when the project has source material and tasks." /> : (
-      <div className="run-layout"><div className="run-list" aria-label="Run history">
+  return <section className="card run-center" aria-label="运行中心">
+    <div className="card-title"><div><h2>报告运行中心</h2><p>当前项目：{projectId}</p></div><button type="button" className="primary" disabled={actionPending} onClick={onStart}>生成项目报告</button></div>
+    {runs.length === 0 ? <EmptyState title="还没有运行记录" hint="上传项目资料和任务后，即可生成第一份项目报告。" /> : (
+      <div className="run-layout"><div className="run-list" aria-label="运行历史">
         {runs.map((run) => <button type="button" key={run.run_id} className={`run-row ${run.run_id === selectedRun?.run_id ? 'selected' : ''}`} onClick={() => onSelect(run.run_id)}>
           <strong>{run.status}</strong><span>{formatDate(run.created_at)}</span><small>{run.run_id}</small>
         </button>)}
@@ -265,9 +265,9 @@ function RunCenter({ projectId, runs, selectedRun, progress, actionPending, onSt
 function RunDetail({ run, progress, pending, onCancel, onRetry, onDownload }: { run: RunState; progress: RunProgress | null; pending: boolean; onCancel: () => void; onRetry: () => void; onDownload: (name: string) => void }) {
   const live = progress ?? run
   const stepLabel = progress?.current_step_name || `${live.current_step} / ${run.total_steps}`
-  return <div className="run-detail"><h3>Run details</h3><dl><dt>Status</dt><dd>{live.status}</dd><dt>Created</dt><dd>{formatDate(run.created_at)}</dd><dt>Updated</dt><dd>{formatDate(run.updated_at)}</dd><dt>Step</dt><dd>{stepLabel}</dd>{progress ? <><dt>Progress</dt><dd>{progress.percentage}%</dd></> : null}{live.current_file ? <><dt>Current file</dt><dd>{live.current_file}</dd></> : null}</dl>
+  return <div className="run-detail"><h3>运行详情</h3><dl><dt>状态</dt><dd>{live.status}</dd><dt>创建时间</dt><dd>{formatDate(run.created_at)}</dd><dt>更新时间</dt><dd>{formatDate(run.updated_at)}</dd><dt>当前步骤</dt><dd>{stepLabel}</dd>{progress ? <><dt>进度</dt><dd>{progress.percentage}%</dd></> : null}{live.current_file ? <><dt>当前文件</dt><dd>{live.current_file}</dd></> : null}</dl>
     {run.error || progress?.error_summary ? <p className="run-error">{progress?.error_summary ?? run.error}</p> : null}
-    <div className="actions">{isActive(run.status) ? <button type="button" disabled={pending} onClick={onCancel}>Cancel run</button> : null}{['failed', 'cancelled'].includes(run.status) ? <button type="button" disabled={pending} onClick={onRetry}>Retry run</button> : null}</div>
-    <h4>Artifacts</h4>{Object.keys(run.artifacts).length === 0 ? <p className="muted">Artifacts will appear after the run writes them.</p> : <div className="actions">{Object.keys(run.artifacts).map((name) => <button type="button" key={name} disabled={pending} onClick={() => onDownload(name)}>{ARTIFACT_LABELS[name] ?? name}</button>)}</div>}
+    <div className="actions">{isActive(run.status) ? <button type="button" disabled={pending} onClick={onCancel}>取消运行</button> : null}{['failed', 'cancelled'].includes(run.status) ? <button type="button" disabled={pending} onClick={onRetry}>重新运行</button> : null}</div>
+    <h4>运行产物</h4>{Object.keys(run.artifacts).length === 0 ? <p className="muted">运行完成后会在此显示可下载产物。</p> : <div className="actions">{Object.keys(run.artifacts).map((name) => <button type="button" key={name} disabled={pending} onClick={() => onDownload(name)}>{ARTIFACT_LABELS[name] ?? name}</button>)}</div>}
   </div>
 }
