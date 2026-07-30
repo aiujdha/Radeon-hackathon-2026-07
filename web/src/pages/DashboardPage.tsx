@@ -156,11 +156,11 @@ export function DashboardPage() {
   return (
     <div>
       <PageHeader title="Project workbench">
-        <select className="project-select" aria-label="Select project" value={selectedId ?? ''}
-          disabled={loading || projects.length === 0}
+        {projects.length > 0 ? <select className="project-select" aria-label="选择项目" value={selectedId ?? ''}
+          disabled={loading}
           onChange={(event) => setSelectedId(event.target.value)}>
           {projects.map((project) => <option key={project.project_id} value={project.project_id}>{project.name}</option>)}
-        </select>
+        </select> : null}
       </PageHeader>
 
       <ProjectCreator autoOpen={!loading && projects.length === 0} onCreated={async (project) => {
@@ -215,12 +215,12 @@ function ProjectCreator({ autoOpen, onCreated }: { autoOpen: boolean; onCreated:
     } catch (cause) { setError(cause as Error) } finally { setPending(false) }
   }
 
-  return <section className="project-creator" aria-label="Create project">
-    <button type="button" className="text-button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+  return <section className={`project-creator ${autoOpen ? 'first-project' : ''}`} aria-label="创建项目">
+    {!autoOpen ? <button type="button" className="text-button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
       {open ? '收起项目创建' : '创建项目'}
-    </button>
+    </button> : null}
     {open ? <div className="project-creator-form">
-      <h2>创建第一个项目</h2><p className="muted">创建后你会自动成为项目管理员。项目 ID 只能使用小写字母、数字和连字符。</p>
+      <h2>{autoOpen ? '创建第一个项目' : '创建项目'}</h2><p className="muted">创建后你会自动成为项目管理员。项目 ID 只能使用小写字母、数字和连字符。</p>
       {error ? <ErrorBanner error={error} onRetry={() => void submit()} /> : null}
       <label>项目 ID<input aria-label="Project ID" value={projectId} disabled={pending} onChange={(event) => setProjectId(event.target.value)} placeholder="例如 client-a-delivery" /></label>
       <label>项目名称<input aria-label="Project name" value={name} disabled={pending} onChange={(event) => setName(event.target.value)} placeholder="例如 客户 A 交付项目" /></label>
