@@ -1,13 +1,15 @@
 import type { ReactNode } from 'react'
 import { useAuth } from '../auth/AuthContext'
 
+const appVersion = typeof __APP_VERSION__ === 'undefined' ? '0.1.0' : __APP_VERSION__
+
 /** App shell: top navigation bar with brand, current user, and sign-out. */
 export function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   return (
     <div>
       <nav className="topnav">
-        <span className="brand">Radeon Unified Workbench</span>
+        <span className="brand">Radeon Unified Workbench <small className="app-version" title="Frontend release version">v{appVersion}</small></span>
         <span className="user">
           <span>{user?.display_name ?? user?.username ?? 'Guest'}</span>
           <button type="button" className="retry" onClick={logout}>
