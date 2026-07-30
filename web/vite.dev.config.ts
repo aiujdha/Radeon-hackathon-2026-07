@@ -7,7 +7,9 @@ import react from '@vitejs/plugin-react'
 // The FastAPI application listens on 9000 by default.  Keep the development
 // proxy aligned with `.env.example` so a UI-only startup does not accidentally
 // target the llama.cpp chat endpoint on 8000.
-const API_TARGET = process.env.VITE_API_TARGET || 'http://localhost:9000'
+// Use the IPv4 loopback explicitly. Some Linux images resolve `localhost` to
+// IPv6 first while the API deliberately binds only to 127.0.0.1.
+const API_TARGET = process.env.VITE_API_TARGET || 'http://127.0.0.1:9000'
 
 export default defineConfig({
   plugins: [react()],
