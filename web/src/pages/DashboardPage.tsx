@@ -6,6 +6,7 @@ import { TaskWorkbench } from '../components/TaskWorkbench'
 import { RiskReportCenter } from '../components/RiskReportCenter'
 import { CollaborationCenter } from '../components/CollaborationCenter'
 import { AdminOperations, IntegrationAdminCenter } from '../components/IntegrationAdminCenter'
+import { getReportReadiness } from '../features/preflight'
 import type { Project, ProjectCreate, ProjectOverview, RunProgress, RunState, RunStatus } from '../api/dto'
 
 const ACTIVE_RUN_STATUSES: RunStatus[] = [
@@ -123,6 +124,12 @@ export function DashboardPage() {
   }
 
   const startRun = () => void runAction(async () => {
+    const [files, tasks] = await Promise.all([
+      client.listProjectFiles(selectedId!),
+      client.listTasks(selectedId!),
+    ])
+    const readiness = getReportReadiness(files, tasks.length)
+    if (!readiness.ready) throw new Error(readiness.message ?? '当前项目尚未满足报告生成条件。')
     const run = await client.createRun(selectedId!)
     return client.executeRun(selectedId!, run.run_id)
   })
@@ -149,21 +156,21 @@ export function DashboardPage() {
   return (
     <div>
       <PageHeader title="Project workbench">
-        <select className="project-select" aria-label="Select project" value={selectedId ?? ''}
-          disabled={loading || projects.length === 0}
+        {projects.length > 0 ? <select className="project-select" aria-label="选择项目" value={selectedId ?? ''}
+          disabled={loading}
           onChange={(event) => setSelectedId(event.target.value)}>
           {projects.map((project) => <option key={project.project_id} value={project.project_id}>{project.name}</option>)}
-        </select>
+        </select> : null}
       </PageHeader>
 
-      <ProjectCreator onCreated={async (project) => {
+      <ProjectCreator autoOpen={!loading && projects.length === 0} onCreated={async (project) => {
         await loadProjects()
         setSelectedId(project.project_id)
       }} />
 
       {error ? <ErrorBanner error={error} onRetry={() => selectedId ? void loadProjectData(selectedId) : void loadProjects()} /> : null}
       {loading ? <LoadingBlock label="Loading accessible projects…" /> : null}
-      {!loading && projects.length === 0 ? <EmptyState title="No accessible projects" hint="Ask an administrator to add you to a project." /> : null}
+      {!loading && projects.length === 0 ? <EmptyState title="还没有可访问的项目" hint="从上方创建你的第一个项目；创建者会自动成为该项目管理员。" /> : null}
       {selectedId && overview ? <OverviewView overview={overview} /> : null}
       <AdminOperations />
       {selectedId ? <MaterialLibrary projectId={selectedId} /> : null}
@@ -182,14 +189,18 @@ export function DashboardPage() {
   )
 }
 
-function ProjectCreator({ onCreated }: { onCreated: (project: Project) => Promise<void> }) {
+function ProjectCreator({ autoOpen, onCreated }: { autoOpen: boolean; onCreated: (project: Project) => Promise<void> }) {
   const { client } = useAuth()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(autoOpen)
   const [projectId, setProjectId] = useState('')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    if (autoOpen) setOpen(true)
+  }, [autoOpen])
 
   const submit = async () => {
     const body: ProjectCreate = {
@@ -204,17 +215,17 @@ function ProjectCreator({ onCreated }: { onCreated: (project: Project) => Promis
     } catch (cause) { setError(cause as Error) } finally { setPending(false) }
   }
 
-  return <section className="project-creator" aria-label="Create project">
-    <button type="button" className="text-button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-      {open ? 'Close project creation' : 'Create project'}
-    </button>
+  return <section className={`project-creator ${autoOpen ? 'first-project' : ''}`} aria-label="创建项目">
+    {!autoOpen ? <button type="button" className="text-button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      {open ? '收起项目创建' : '创建项目'}
+    </button> : null}
     {open ? <div className="project-creator-form">
-      <h2>Create a project</h2><p className="muted">You become this project's administrator. Project ID must use lowercase letters, digits, and hyphens.</p>
+      <h2>{autoOpen ? '创建第一个项目' : '创建项目'}</h2><p className="muted">创建后你会自动成为项目管理员。项目 ID 只能使用小写字母、数字和连字符。</p>
       {error ? <ErrorBanner error={error} onRetry={() => void submit()} /> : null}
-      <label>Project ID<input aria-label="Project ID" value={projectId} disabled={pending} onChange={(event) => setProjectId(event.target.value)} placeholder="e.g. product-launch" /></label>
-      <label>Project name<input aria-label="Project name" value={name} disabled={pending} onChange={(event) => setName(event.target.value)} placeholder="e.g. Product launch" /></label>
-      <label>Description <span className="muted">(optional)</span><textarea aria-label="Project description" value={description} disabled={pending} onChange={(event) => setDescription(event.target.value)} placeholder="Brief purpose and scope" /></label>
-      <div className="actions"><button type="button" className="primary" disabled={pending || !projectId.trim() || !name.trim()} onClick={() => void submit()}>Create project</button><button type="button" disabled={pending} onClick={() => setOpen(false)}>Cancel</button></div>
+      <label>项目 ID<input aria-label="Project ID" value={projectId} disabled={pending} onChange={(event) => setProjectId(event.target.value)} placeholder="例如 client-a-delivery" /></label>
+      <label>项目名称<input aria-label="Project name" value={name} disabled={pending} onChange={(event) => setName(event.target.value)} placeholder="例如 客户 A 交付项目" /></label>
+      <label>项目说明 <span className="muted">（可选）</span><textarea aria-label="Project description" value={description} disabled={pending} onChange={(event) => setDescription(event.target.value)} placeholder="简要说明项目目的和范围" /></label>
+      <div className="actions"><button type="button" className="primary" disabled={pending || !projectId.trim() || !name.trim()} onClick={() => void submit()}>创建并开始上传资料</button><button type="button" disabled={pending} onClick={() => setOpen(false)}>取消</button></div>
     </div> : null}
   </section>
 }

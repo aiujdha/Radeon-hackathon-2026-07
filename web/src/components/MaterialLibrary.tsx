@@ -14,6 +14,16 @@ function formatDate(value: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
 }
 
+function downloadTaskTemplate(): void {
+  const csv = '\ufefftitle,assignee,deadline,priority,acceptance_criteria,original_source\n完成项目周报,张三,2026-08-01,high,周报包含本周进展、风险和下周计划,status.md\n'
+  const href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = href
+  link.download = '任务表模板.csv'
+  link.click()
+  URL.revokeObjectURL(href)
+}
+
 export function MaterialLibrary({ projectId }: { projectId: string }) {
   const { client } = useAuth()
   const [files, setFiles] = useState<ProjectFileEntry[]>([])
@@ -70,11 +80,12 @@ export function MaterialLibrary({ projectId }: { projectId: string }) {
   }
 
   return <section className="card material-library" aria-label="Material library">
-    <div className="card-title"><div><h2>Materials</h2><p>Files stay within this project. Uploaded files are indexed by a controlled run.</p></div><div className="upload-actions">
-      <label className="file-button">Upload reference<input type="file" disabled={uploading} accept=".md,.txt,.pdf,.docx,.xlsx" onChange={(event) => void upload(event, false)} /></label>
-      <label className="file-button">Upload task list<input type="file" disabled={uploading} accept=".csv,.xlsx" onChange={(event) => void upload(event, true)} /></label>
+    <div className="card-title"><div><h2>项目资料</h2><p>先上传至少一份项目资料；任务可以上传 CSV/XLSX，或在任务工作台持续维护。</p></div><div className="upload-actions">
+      <label className="file-button">上传项目资料<input type="file" disabled={uploading} accept=".md,.txt,.pdf,.docx,.xlsx" onChange={(event) => void upload(event, false)} /></label>
+      <label className="file-button">上传任务表<input type="file" disabled={uploading} accept=".csv,.xlsx" onChange={(event) => void upload(event, true)} /></label>
+      <button type="button" className="text-button" onClick={downloadTaskTemplate}>下载任务表模板</button>
     </div></div>
     {error ? <ErrorBanner error={error} onRetry={() => void load()} /> : null}
-    {loading ? <LoadingBlock label="Loading project materials…" /> : files.length === 0 ? <EmptyState title="No materials yet" hint="Upload reference material and one task CSV/XLSX before generating a report." /> : <table><thead><tr><th>File</th><th>Kind</th><th>State</th><th>Size</th><th>Updated</th><th /></tr></thead><tbody>{files.map((file) => <tr key={file.relative_path}><td>{file.filename}</td><td>{file.is_task_file ? 'Task list' : 'Reference'}</td><td><span className={`state state-${file.processing_status}`}>{file.processing_status === 'indexed' ? `Indexed (v${file.index_version})` : 'Uploaded — indexed by next run'}</span></td><td>{formatBytes(file.size_bytes)}</td><td>{formatDate(file.updated_at)}</td><td><button type="button" className="text-button" disabled={uploading} onClick={() => void download(file)}>Download</button></td></tr>)}</tbody></table>}
+    {loading ? <LoadingBlock label="正在加载项目资料…" /> : files.length === 0 ? <EmptyState title="还没有上传资料" hint="第一步：上传项目资料；第二步：上传任务表或在任务工作台创建任务；最后生成报告。" /> : <table><thead><tr><th>文件</th><th>类型</th><th>状态</th><th>大小</th><th>更新时间</th><th /></tr></thead><tbody>{files.map((file) => <tr key={file.relative_path}><td>{file.filename}</td><td>{file.is_task_file ? '任务表' : '项目资料'}</td><td><span className={`state state-${file.processing_status}`}>{file.processing_status === 'indexed' ? `已索引（v${file.index_version}）` : '已上传，下一次运行时索引'}</span></td><td>{formatBytes(file.size_bytes)}</td><td>{formatDate(file.updated_at)}</td><td><button type="button" className="text-button" disabled={uploading} onClick={() => void download(file)}>下载</button></td></tr>)}</tbody></table>}
   </section>
 }
