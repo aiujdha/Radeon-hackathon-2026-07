@@ -31,9 +31,9 @@ export function LoginPage() {
 
   return (
     <div className="login-card">
-      <h1>Sign in</h1>
+      <h1>登录</h1>
       <form onSubmit={handleSubmit}>
-        <label htmlFor="username">Username</label>
+        <label htmlFor="username">用户名</label>
         <input
           id="username"
           value={username}
@@ -41,7 +41,7 @@ export function LoginPage() {
           onChange={(e) => setUsername(e.target.value)}
           required
         />
-        <label htmlFor="password">Password</label>
+        <label htmlFor="password">密码</label>
         <input
           id="password"
           type="password"
@@ -52,7 +52,7 @@ export function LoginPage() {
         />
         <div style={{ marginTop: 16 }}>
           <button type="submit" className="primary" disabled={submitting}>
-            {submitting ? 'Signing in…' : 'Sign in'}
+            {submitting ? '正在登录…' : '登录'}
           </button>
         </div>
       </form>

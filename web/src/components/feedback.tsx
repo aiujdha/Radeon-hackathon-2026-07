@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { ApiError } from '../api/errors'
 
-export function FullScreenLoading({ label = 'Loading…' }: { label?: string }) {
+export function FullScreenLoading({ label = '正在加载…' }: { label?: string }) {
   return (
     <div className="center-screen" role="status" aria-live="polite">
       <div className="spinner" aria-hidden="true" />
@@ -10,7 +10,7 @@ export function FullScreenLoading({ label = 'Loading…' }: { label?: string }) 
   )
 }
 
-export function LoadingBlock({ label = 'Loading…' }: { label?: string }) {
+export function LoadingBlock({ label = '正在加载…' }: { label?: string }) {
   return (
     <div className="loading-block" role="status" aria-live="polite">
       <div className="spinner" aria-hidden="true" />
@@ -53,7 +53,7 @@ export function ErrorBanner({
       <span>{message}</span>
       {onRetry ? (
         <button type="button" className="retry" onClick={onRetry}>
-          Retry
+          重试
         </button>
       ) : null}
     </div>
