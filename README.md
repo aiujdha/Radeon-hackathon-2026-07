@@ -5,6 +5,9 @@ project teams. It imports project reference files and a task list, retrieves
 project-scoped evidence, evaluates task progress with rules plus a local LLM,
 and generates an auditable report bundle.
 
+For the official Track 2 submission document, see
+[Project Specification](docs/PROJECT_SPECIFICATION.md).
+
 ## MVP capabilities
 
 ```text
