@@ -115,10 +115,9 @@ async def collect_gpu_metrics() -> dict:
                 timeout=15,
             )
             if result.returncode == 0:
-                data = json.loads(result.stdout)
                 from app.services.monitor import HealthMonitor
 
-            samples = HealthMonitor.parse_rocm_smi_json(result.stdout)
+                samples = HealthMonitor.parse_rocm_smi_json(result.stdout)
                 if samples:
                     sample = samples[0]
                     metrics["vram_total_mb"] = sample.vram_total_mb
