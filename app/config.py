@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     embedding_base_url: HttpUrl = "http://127.0.0.1:8080/v1"
     llm_api_key: str = Field(default="local-no-key", min_length=1)
     llm_model: str = Field(default="qwen3.6-office-agent", min_length=1)
-    llm_timeout_seconds: float = Field(default=15, gt=0, le=120)
+    # A local 35B model can need longer than 15 seconds for a structured
+    # report explanation. The output cap below keeps normal requests short.
+    llm_timeout_seconds: float = Field(default=90, gt=0, le=120)
+    llm_max_tokens: int = Field(default=384, ge=64, le=2048)
 
     api_host: str = Field(default="127.0.0.1", min_length=1)
     api_port: int = Field(default=9000, ge=1, le=65535)

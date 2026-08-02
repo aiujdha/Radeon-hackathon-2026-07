@@ -22,7 +22,8 @@ from pathlib import Path
 
 import httpx
 
-API_BASE = "http://127.0.0.1:8000"
+CHAT_BASE = "http://127.0.0.1:8000"
+EMBEDDING_BASE = "http://127.0.0.1:8080"
 
 
 async def run_llm_benchmark(client: httpx.AsyncClient) -> dict:
@@ -36,12 +37,12 @@ async def run_llm_benchmark(client: httpx.AsyncClient) -> dict:
 
     t0 = time.perf_counter()
     resp = await client.post(
-        f"{API_BASE}/v1/chat/completions",
+        f"{CHAT_BASE}/v1/chat/completions",
         json={
-            "model": "local",
+            "model": "qwen3.6-office-agent",
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 200,
-            "temperature": 0.7,
+            "max_tokens": 128,
+            "temperature": 0.2,
         },
         timeout=120.0,
     )
@@ -71,7 +72,7 @@ async def run_embedding_benchmark(client: httpx.AsyncClient) -> dict:
 
     t0 = time.perf_counter()
     resp = await client.post(
-        f"{API_BASE}/v1/embeddings",
+        f"{EMBEDDING_BASE}/v1/embeddings",
         json={"model": "bge-small-en-v1.5", "input": texts},
         timeout=60.0,
     )
@@ -101,28 +102,30 @@ async def collect_gpu_metrics() -> dict:
     if rocm_smi:
         try:
             result = subprocess.run(
-                [rocm_smi, "--showmeminfo", "vram", "--showuse", "--json"],
+                [
+                    rocm_smi,
+                    "--showproductname",
+                    "--showmeminfo", "vram",
+                    "--showuse",
+                    "--showtemp",
+                    "--json",
+                ],
                 capture_output=True,
                 text=True,
                 timeout=15,
             )
             if result.returncode == 0:
                 data = json.loads(result.stdout)
-                for card_id, card_data in data.items():
-                    vram = (
-                        card_data.get("VRAM", [{}])[0]
-                        if isinstance(card_data.get("VRAM"), list)
-                        else {}
-                    )
-                    metrics["vram_total_mb"] = float(
-                        vram.get("Total Memory (MB)", 0)
-                    )
-                    metrics["vram_used_mb"] = float(
-                        vram.get("Used Memory (MB)", 0)
-                    )
-                    metrics["gpu_model"] = card_data.get("Device Name", "")
+                from app.services.monitor import HealthMonitor
+
+                samples = HealthMonitor.parse_rocm_smi_json(data)
+                if samples:
+                    sample = samples[0]
+                    metrics["vram_total_mb"] = sample.vram_total_mb
+                    metrics["vram_used_mb"] = sample.vram_used_mb
+                    metrics["gpu_utilization_pct"] = sample.utilization_pct
+                    metrics["gpu_model"] = sample.name
                     metrics["backend"] = "rocm"
-                    break
         except Exception:
             pass
     elif nvidia_smi:
@@ -152,6 +155,8 @@ async def collect_gpu_metrics() -> dict:
 
 
 async def main() -> None:
+    global CHAT_BASE, EMBEDDING_BASE
+
     parser = argparse.ArgumentParser(description="Stage J Benchmark Tool")
     parser.add_argument(
         "--label",
@@ -160,10 +165,16 @@ async def main() -> None:
         help="Label for this benchmark snapshot (e.g. baseline, post-opt)",
     )
     parser.add_argument(
-        "--api-base",
+        "--chat-base",
         type=str,
-        default=API_BASE,
-        help="Base URL of the running application",
+        default=CHAT_BASE,
+        help="Base URL of the llama.cpp chat server",
+    )
+    parser.add_argument(
+        "--embedding-base",
+        type=str,
+        default=EMBEDDING_BASE,
+        help="Base URL of the llama.cpp embedding server",
     )
     parser.add_argument(
         "--output",
@@ -173,8 +184,8 @@ async def main() -> None:
     )
     args = parser.parse_args()
 
-    global API_BASE
-    API_BASE = args.api_base.rstrip("/")
+    CHAT_BASE = args.chat_base.rstrip("/")
+    EMBEDDING_BASE = args.embedding_base.rstrip("/")
 
     print(f"\n{'='*60}")
     print(f"  Stage J Benchmark — {args.label}")

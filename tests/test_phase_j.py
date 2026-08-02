@@ -12,6 +12,7 @@ import asyncio
 from pathlib import Path
 
 import pytest
+import httpx
 from fastapi.testclient import TestClient
 
 from app.config import Settings
@@ -340,6 +341,20 @@ def test_record_errors():
     monitor.record_llm_error()
     monitor.record_llm_error()
     assert monitor.llm_error_rate == 100.0
+
+
+@pytest.mark.asyncio
+async def test_model_metadata_uses_openai_v1_models_path():
+    """Telemetry must not concatenate `/v1` and `models` into `v1models`."""
+    from app.services.monitor import HealthMonitor
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/models"
+        return httpx.Response(200, json={"data": [{"id": "qwen", "meta": {"n_ctx": 16384}}]})
+
+    metadata = await HealthMonitor(Settings()).collect_model_metadata(httpx.MockTransport(handler))
+    assert metadata.model_name == "qwen"
+    assert metadata.context_size == 16384
 
 
 @pytest.mark.asyncio

@@ -977,6 +977,15 @@ class TestExplanationPrompt:
         prompt = build_explanation_prompt(cr)
         assert "（无验收标准）" in prompt
 
+    def test_prompt_limits_each_evidence_excerpt(self):
+        """The explanation prompt keeps RAG context concise for local models."""
+        task = _make_task(title="长资料任务", assignee="张三")
+        evidence = "证据" * 300
+        cr = check_task(task, [evidence])
+        prompt = build_explanation_prompt(cr)
+        assert evidence[:180] in prompt
+        assert evidence[:181] not in prompt
+
 
 # ===========================================================================
 # LLM integration tests (async)
