@@ -10,7 +10,12 @@ from app.services.projects import (
     get_project,
     list_projects,
 )
-from app.security.permissions import get_project_api_user, get_project_role, has_min_role
+from app.security.permissions import (
+    get_project_api_user,
+    get_project_role,
+    has_min_role,
+    require_project_creation_permission,
+)
 
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -29,7 +34,12 @@ def list_all(request: Request, user: dict | None = Depends(get_project_api_user)
     ]
 
 
-@router.post("", response_model=Project, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=Project,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_project_creation_permission)],
+)
 def create(payload: ProjectCreate, request: Request, user: dict | None = Depends(get_project_api_user)) -> Project:
     settings = request.app.state.settings
     try:

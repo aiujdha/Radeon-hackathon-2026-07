@@ -37,6 +37,7 @@ const OK_TOKEN: TokenResponse = {
   user_id: 'u1',
   username: 'demo',
   display_name: 'Demo',
+  is_system_admin: false,
 }
 
 describe('ApiClient.request', () => {

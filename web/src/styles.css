@@ -231,6 +231,8 @@ td {
 .actions button { background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 7px 10px; cursor: pointer; }
 .actions button:disabled { opacity: .55; cursor: not-allowed; }
 .run-error { color: #a12c2c; font-weight: 600; overflow-wrap: anywhere; }
+.access-banner { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); background: var(--panel-2); }
+.access-banner.read-only { border-color: #b7791f; color: #8a5b13; }
 .upload-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .file-button, .text-button { background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 7px 10px; cursor: pointer; font: inherit; font-size: 14px; }
 .file-button input { display: none; }

@@ -160,6 +160,7 @@ class TestAuth:
         assert "access_token" in data
         assert data["token_type"] == "bearer"
         assert data["username"] == "admin"
+        assert data["is_system_admin"] is True
 
     def test_login_failure_wrong_password(self, client):
         r = client.post("/auth/login", json={"username": "admin", "password": "wrong"})
@@ -174,6 +175,7 @@ class TestAuth:
         assert r.status_code == 200
         data = r.json()
         assert data["username"] == "admin"
+        assert data["is_system_admin"] is True
         assert data["display_name"] == "管理员"
 
     def test_me_no_token(self, client):

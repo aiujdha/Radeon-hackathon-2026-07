@@ -181,6 +181,24 @@ def require_project_api_role(required_role: str) -> Callable:
     return _guard
 
 
+async def require_project_creation_permission(
+    request: Request,
+    user: dict | None = Depends(get_project_api_user),
+) -> None:
+    """Only configured system administrators may create projects in production.
+
+    The explicit authorization bypass remains available for isolated legacy
+    tests. Project creation is otherwise a tenant-level write operation, not a
+    permission granted by membership in an existing project.
+    """
+    if not request.app.state.settings.enforce_project_authorization:
+        return
+    assert user is not None
+    allowed = set(request.app.state.settings.system_admin_usernames)
+    if user.get("username") not in allowed:
+        raise HTTPException(status_code=403, detail=get_error("ACCESS_DENIED"))
+
+
 async def require_system_admin(
     user: dict = Depends(get_current_user), request: Request = None
 ) -> None:

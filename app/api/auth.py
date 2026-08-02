@@ -49,13 +49,21 @@ async def login(body: LoginRequest, request: Request):
     result = svc.authenticate(body.username, body.password)
     if result is None:
         raise HTTPException(status_code=401, detail=get_error("AUTH_INVALID_CREDENTIALS"))
+    result["is_system_admin"] = result["username"] in set(
+        request.app.state.settings.system_admin_usernames
+    )
     return result
 
 
 @router.get("/me", response_model=UserProfile)
-async def me(user: dict = Depends(get_current_user)):
+async def me(request: Request, user: dict = Depends(get_current_user)):
     """Return the current authenticated user's profile."""
-    return user
+    return {
+        **user,
+        "is_system_admin": user["username"] in set(
+            request.app.state.settings.system_admin_usernames
+        ),
+    }
 
 
 @router.get("/users", response_model=list[UserProfile])
