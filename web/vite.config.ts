@@ -3,6 +3,17 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    // The browser talks to the Vite origin in development. Keep the API on
+    // localhost in the cloud instance and proxy same-origin `/api` requests
+    // to FastAPI, avoiding an exposed API port and CORS configuration drift.
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:9000',
+        changeOrigin: true,
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'node',

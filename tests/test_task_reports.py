@@ -993,7 +993,7 @@ class TestEvaluateWithLLM:
             title="接口开发",
             assignee="李四",
             acceptance_criteria="API文档和测试通过",
-            deadline="2026-08-01",
+            deadline=(date.today() + timedelta(days=30)).isoformat(),
         )
         evidence = ["API文档已交付", "测试全部通过"]
 
