@@ -175,7 +175,11 @@ export function DashboardPage() {
 
       {error ? <ErrorBanner error={error} onRetry={() => selectedId ? void loadProjectData(selectedId) : void loadProjects()} /> : null}
       {loading ? <LoadingBlock label="正在加载可访问项目…" /> : null}
-      {!loading && projects.length === 0 ? <EmptyState title="还没有可访问的项目" hint="从上方创建你的第一个项目；创建者会自动成为该项目管理员。" /> : null}
+      {!loading && projects.length === 0 ? (
+        user?.is_system_admin
+          ? <EmptyState title="还没有可访问的项目" hint="从上方创建你的第一个项目；创建者会自动成为该项目管理员。" />
+          : <EmptyState title="还没有可访问的项目" hint="请联系系统管理员创建项目，或请项目管理员把你加入已有项目。" />
+      ) : null}
       {selectedId && overview ? <OverviewView overview={overview} /> : null}
       {selectedId && projectRole ? <p className={`access-banner ${projectRole === 'guest' ? 'read-only' : ''}`}>
         当前项目角色：{PROJECT_ROLE_LABELS[projectRole]}。{roleCapabilitySummary(projectRole)}
