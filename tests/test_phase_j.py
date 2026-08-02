@@ -342,6 +342,26 @@ def test_record_errors():
     assert monitor.llm_error_rate == 100.0
 
 
+def test_parse_current_rocm_smi_json():
+    """Current ROCm SMI images expose VRAM values directly in bytes."""
+    from app.services.monitor import HealthMonitor
+
+    metrics = HealthMonitor.parse_rocm_smi_json(
+        '{"card0": {"Card Series": "AMD Radeon Graphics", '
+        '"VRAM Total Memory (B)": "51522830336", '
+        '"VRAM Total Used Memory (B)": "48936890368", '
+        '"GPU use (%)": "100", '
+        '"Temperature (Sensor edge) (C)": "46.0"}}'
+    )
+
+    assert len(metrics) == 1
+    assert metrics[0].name == "AMD Radeon Graphics"
+    assert metrics[0].vram_total_mb == pytest.approx(49136.0, abs=1)
+    assert metrics[0].vram_used_mb == pytest.approx(46670.0, abs=1)
+    assert metrics[0].utilization_pct == 100.0
+    assert metrics[0].temperature_c == 46.0
+
+
 @pytest.mark.asyncio
 async def test_health_check():
     from app.services.monitor import HealthMonitor

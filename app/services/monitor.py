@@ -127,13 +127,15 @@ class HealthMonitor:
         return []
 
     async def _rocm_metrics(self) -> list[GPUMetrics]:
-        """Parse ``rocm-smi --showmeminfo vram --showuse --json`` output."""
+        """Parse the live ROCm SMI metrics emitted by AMD GPU hosts."""
         try:
             proc = await asyncio.create_subprocess_exec(
                 self._rocm_smi_path,
                 "--showmeminfo",
                 "vram",
                 "--showuse",
+                "--showtemp",
+                "--showproductname",
                 "--json",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
@@ -145,38 +147,80 @@ class HealthMonitor:
                 logger.warning("rocm-smi exited %d: %s", proc.returncode, stderr)
                 return []
 
-            import json
-
-            data = json.loads(stdout)
-            results: list[GPUMetrics] = []
-            for gpu_id, gpu_data in data.items():
-                gpu_id_int = int(gpu_id.replace("card", ""))
-                vram = gpu_data.get("VRAM", [{}])[0] if isinstance(
-                    gpu_data.get("VRAM"), list
-                ) else {}
-                gpu_use = gpu_data.get("GPU use (%)", "0")
-                if isinstance(gpu_use, str):
-                    gpu_use = float(gpu_use.replace("%", "").strip() or "0")
-
-                metrics = GPUMetrics(
-                    device_id=gpu_id_int,
-                    name=gpu_data.get("Device Name", str(gpu_id_int)),
-                    vram_total_mb=float(vram.get("Total Memory (MB)", 0)),
-                    vram_used_mb=float(vram.get("Used Memory (MB)", 0)),
-                    vram_free_mb=float(
-                        vram.get("Total Memory (MB)", 0)
-                        - vram.get("Used Memory (MB)", 0)
-                    ),
-                    utilization_pct=float(gpu_use),
-                )
-                results.append(metrics)
-            return results
+            return self.parse_rocm_smi_json(stdout)
         except asyncio.TimeoutError:
             logger.warning("rocm-smi timed out")
             return []
         except Exception as exc:
             logger.error("Failed to collect ROCm metrics: %s", exc)
             return []
+
+    @staticmethod
+    def parse_rocm_smi_json(payload: bytes | str) -> list[GPUMetrics]:
+        """Convert ROCm SMI JSON into stable API metrics.
+
+        ROCm SMI has used more than one JSON schema.  Current cloud images
+        return direct byte fields such as ``VRAM Total Memory (B)`` while
+        older versions nest memory values under ``VRAM`` in MB.  Supporting
+        both keeps the dashboard useful across Radeon images.
+        """
+        import json
+
+        try:
+            data = json.loads(payload)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return []
+
+        def number(value: object) -> float:
+            if isinstance(value, (int, float)):
+                return float(value)
+            if isinstance(value, str):
+                try:
+                    return float(value.replace("%", "").strip() or "0")
+                except ValueError:
+                    return 0.0
+            return 0.0
+
+        results: list[GPUMetrics] = []
+        for gpu_id, raw_gpu_data in data.items():
+            if not isinstance(raw_gpu_data, dict):
+                continue
+            gpu_data: dict[str, object] = raw_gpu_data
+            try:
+                device_id = int(str(gpu_id).replace("card", ""))
+            except ValueError:
+                device_id = len(results)
+
+            legacy_vram = gpu_data.get("VRAM")
+            legacy_vram_data = (
+                legacy_vram[0]
+                if isinstance(legacy_vram, list) and legacy_vram and isinstance(legacy_vram[0], dict)
+                else {}
+            )
+            total_mb = number(gpu_data.get("VRAM Total Memory (B)")) / (1024**2)
+            used_mb = number(gpu_data.get("VRAM Total Used Memory (B)")) / (1024**2)
+            if total_mb == 0:
+                total_mb = number(legacy_vram_data.get("Total Memory (MB)"))
+            if used_mb == 0:
+                used_mb = number(legacy_vram_data.get("Used Memory (MB)"))
+
+            results.append(
+                GPUMetrics(
+                    device_id=device_id,
+                    name=str(
+                        gpu_data.get("Card Series")
+                        or gpu_data.get("Device Name")
+                        or gpu_data.get("Card Model")
+                        or f"AMD GPU {device_id}"
+                    ),
+                    vram_total_mb=round(total_mb, 1),
+                    vram_used_mb=round(used_mb, 1),
+                    vram_free_mb=round(max(total_mb - used_mb, 0.0), 1),
+                    utilization_pct=number(gpu_data.get("GPU use (%)")),
+                    temperature_c=number(gpu_data.get("Temperature (Sensor edge) (C)")),
+                )
+            )
+        return results
 
     async def _nvidia_metrics(self) -> list[GPUMetrics]:
         """Parse ``nvidia-smi`` output."""
@@ -235,12 +279,16 @@ class HealthMonitor:
                 models = data.get("data", [])
                 if models:
                     m = models[0]
+                    model_details = m.get("meta", {}) if isinstance(m.get("meta"), dict) else {}
                     meta = ModelMetadata(
                         model_name=m.get("id", ""),
                         model_path="",
                         quantization=self._infer_quantization(m.get("id", "")),
-                        context_size=self._infer_context(data),
-                        gpu_layers=self._settings.agent_max_steps,
+                        context_size=int(model_details.get("n_ctx", 0) or 0),
+                        # llama.cpp's OpenAI endpoint does not report loaded
+                        # layers.  Do not mislabel the agent step limit as GPU
+                        # layers in an operations dashboard.
+                        gpu_layers=0,
                         backend=self._backend,
                         llama_cpp_version="",
                     )
@@ -420,6 +468,11 @@ class HealthMonitor:
                         "message": f"LLM error rate at {error_rate:.1f}%",
                     }
                 )
+
+        # Fetch metadata together with the health probe.  Previously metadata
+        # was never collected from this path, so a healthy model was rendered
+        # as "unavailable" in the operations page.
+        await self.collect_model_metadata(transport)
 
         # LLM endpoint check
         llm_healthy = await self._check_llm_health(transport)
