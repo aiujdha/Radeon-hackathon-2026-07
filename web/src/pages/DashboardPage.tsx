@@ -6,7 +6,7 @@ import { TaskWorkbench } from '../components/TaskWorkbench'
 import { RiskReportCenter } from '../components/RiskReportCenter'
 import { CollaborationCenter } from '../components/CollaborationCenter'
 import { AdminOperations, IntegrationAdminCenter } from '../components/IntegrationAdminCenter'
-import { canWriteProject, PROJECT_ROLE_LABELS, type ProjectRole } from '../auth/roles'
+import { canWriteProject, PROJECT_ROLE_LABELS, roleCapabilitySummary, type ProjectRole } from '../auth/roles'
 import { getReportReadiness } from '../features/preflight'
 import type { Project, ProjectCreate, ProjectOverview, RunProgress, RunState, RunStatus } from '../api/dto'
 
@@ -178,18 +178,18 @@ export function DashboardPage() {
       {!loading && projects.length === 0 ? <EmptyState title="还没有可访问的项目" hint="从上方创建你的第一个项目；创建者会自动成为该项目管理员。" /> : null}
       {selectedId && overview ? <OverviewView overview={overview} /> : null}
       {selectedId && projectRole ? <p className={`access-banner ${projectRole === 'guest' ? 'read-only' : ''}`}>
-        当前项目角色：{PROJECT_ROLE_LABELS[projectRole]}。
-        {projectRole === 'guest' ? ' 只读模式：可查看项目数据和证据，不能上传、导入、修改任务或生成报告。' : ' 你可以在当前项目权限范围内协作。'}
+        当前项目角色：{PROJECT_ROLE_LABELS[projectRole]}。{roleCapabilitySummary(projectRole)}
       </p> : null}
       <AdminOperations />
       {selectedId ? <MaterialLibrary projectId={selectedId} canWrite={canWriteProject(projectRole)} /> : null}
       {selectedId ? <TaskWorkbench projectId={selectedId} canWrite={canWriteProject(projectRole)} /> : null}
-      {selectedId ? <RiskReportCenter projectId={selectedId} /> : null}
+      {selectedId ? <RiskReportCenter projectId={selectedId} canWrite={canWriteProject(projectRole)} /> : null}
       {selectedId ? <CollaborationCenter projectId={selectedId} /> : null}
       {selectedId && user?.is_system_admin ? <IntegrationAdminCenter projectId={selectedId} /> : null}
       {selectedId ? (
         <RunCenter projectId={selectedId} runs={runs} selectedRun={selectedRun} progress={progress}
           actionPending={actionPending} onStart={startRun} onSelect={setSelectedRunId}
+          canWrite={canWriteProject(projectRole)}
           onCancel={() => selectedRun && void runAction(() => client.cancelRun(selectedId, selectedRun.run_id))}
           onRetry={() => selectedRun && void runAction(() => client.retryRun(selectedId, selectedRun.run_id))}
           onDownload={downloadArtifact} />
@@ -253,30 +253,30 @@ function OverviewView({ overview }: { overview: ProjectOverview }) {
   </section>
 }
 
-function RunCenter({ projectId, runs, selectedRun, progress, actionPending, onStart, onSelect, onCancel, onRetry, onDownload }: {
+function RunCenter({ projectId, runs, selectedRun, progress, actionPending, canWrite, onStart, onSelect, onCancel, onRetry, onDownload }: {
   projectId: string; runs: RunState[]; selectedRun: RunState | null; progress: RunProgress | null; actionPending: boolean
-  onStart: () => void; onSelect: (runId: string) => void; onCancel: () => void; onRetry: () => void; onDownload: (name: string) => void
+  canWrite: boolean; onStart: () => void; onSelect: (runId: string) => void; onCancel: () => void; onRetry: () => void; onDownload: (name: string) => void
 }) {
   return <section className="card run-center" aria-label="运行中心">
-    <div className="card-title"><div><h2>报告运行中心</h2><p>当前项目：{projectId}</p></div><button type="button" className="primary" disabled={actionPending} onClick={onStart}>生成项目报告</button></div>
+    <div className="card-title"><div><h2>报告运行中心</h2><p>当前项目：{projectId}</p></div>{canWrite ? <button type="button" className="primary" disabled={actionPending} onClick={onStart}>生成项目报告</button> : null}</div>
     {runs.length === 0 ? <EmptyState title="还没有运行记录" hint="上传项目资料和任务后，即可生成第一份项目报告。" /> : (
       <div className="run-layout"><div className="run-list" aria-label="运行历史">
         {runs.map((run) => <button type="button" key={run.run_id} className={`run-row ${run.run_id === selectedRun?.run_id ? 'selected' : ''}`} onClick={() => onSelect(run.run_id)}>
           <strong>{run.status}</strong><span>{formatDate(run.created_at)}</span><small>{run.run_id}</small>
         </button>)}
       </div>
-      {selectedRun ? <RunDetail run={selectedRun} progress={progress} pending={actionPending} onCancel={onCancel} onRetry={onRetry} onDownload={onDownload} /> : null}
+      {selectedRun ? <RunDetail run={selectedRun} progress={progress} pending={actionPending} canWrite={canWrite} onCancel={onCancel} onRetry={onRetry} onDownload={onDownload} /> : null}
       </div>
     )}
   </section>
 }
 
-function RunDetail({ run, progress, pending, onCancel, onRetry, onDownload }: { run: RunState; progress: RunProgress | null; pending: boolean; onCancel: () => void; onRetry: () => void; onDownload: (name: string) => void }) {
+function RunDetail({ run, progress, pending, canWrite, onCancel, onRetry, onDownload }: { run: RunState; progress: RunProgress | null; pending: boolean; canWrite: boolean; onCancel: () => void; onRetry: () => void; onDownload: (name: string) => void }) {
   const live = progress ?? run
   const stepLabel = progress?.current_step_name || `${live.current_step} / ${run.total_steps}`
   return <div className="run-detail"><h3>运行详情</h3><dl><dt>状态</dt><dd>{live.status}</dd><dt>创建时间</dt><dd>{formatDate(run.created_at)}</dd><dt>更新时间</dt><dd>{formatDate(run.updated_at)}</dd><dt>当前步骤</dt><dd>{stepLabel}</dd>{progress ? <><dt>进度</dt><dd>{progress.percentage}%</dd></> : null}{live.current_file ? <><dt>当前文件</dt><dd>{live.current_file}</dd></> : null}</dl>
     {run.error || progress?.error_summary ? <p className="run-error">{progress?.error_summary ?? run.error}</p> : null}
-    <div className="actions">{isActive(run.status) ? <button type="button" disabled={pending} onClick={onCancel}>取消运行</button> : null}{['failed', 'cancelled'].includes(run.status) ? <button type="button" disabled={pending} onClick={onRetry}>重新运行</button> : null}</div>
+    <div className="actions">{canWrite && isActive(run.status) ? <button type="button" disabled={pending} onClick={onCancel}>取消运行</button> : null}{canWrite && ['failed', 'cancelled'].includes(run.status) ? <button type="button" disabled={pending} onClick={onRetry}>重新运行</button> : null}</div>
     <h4>运行产物</h4>{Object.keys(run.artifacts).length === 0 ? <p className="muted">运行完成后会在此显示可下载产物。</p> : <div className="actions">{Object.keys(run.artifacts).map((name) => <button type="button" key={name} disabled={pending} onClick={() => onDownload(name)}>{ARTIFACT_LABELS[name] ?? name}</button>)}</div>}
   </div>
 }

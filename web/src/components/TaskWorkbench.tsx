@@ -89,7 +89,7 @@ export function TaskWorkbench({ projectId, canWrite }: { projectId: string; canW
       ) : null}
       {!loading && tab === 'queue' ? (
         <ConfirmationQueuePanel projectId={projectId} queue={queue}
-          operator={canWrite ? user?.username ?? '' : ''} onChanged={load} />
+          operator={canWrite ? user?.username ?? '' : ''} canWrite={canWrite} onChanged={load} />
       ) : null}
       {!loading && tab === 'import' && canWrite ? (
         <ImportPanel projectId={projectId} operator={user?.username ?? ''} onImported={load} />
@@ -283,8 +283,8 @@ function TaskDetail({ projectId, task, onChanged, canWrite }: {
 // Confirmation queue: accept / modify / ignore with reason + evidence
 // ---------------------------------------------------------------------------
 
-function ConfirmationQueuePanel({ projectId, queue, operator, onChanged }: {
-  projectId: string; queue: ConfirmationRecord[]; operator: string; onChanged: () => Promise<void>
+function ConfirmationQueuePanel({ projectId, queue, operator, canWrite, onChanged }: {
+  projectId: string; queue: ConfirmationRecord[]; operator: string; canWrite: boolean; onChanged: () => Promise<void>
 }) {
   const { client } = useAuth()
   const [openId, setOpenId] = useState<number | null>(null)
@@ -353,9 +353,9 @@ function ConfirmationQueuePanel({ projectId, queue, operator, onChanged }: {
               </p>
               {item.candidate_acceptance ? <p className="muted">验收标准：{item.candidate_acceptance}</p> : null}
             </div>
-            <button type="button" className="text-button" onClick={() => openId === item.id ? setOpenId(null) : openItem(item)}>
+            {canWrite ? <button type="button" className="text-button" onClick={() => openId === item.id ? setOpenId(null) : openItem(item)}>
               {openId === item.id ? '收起' : '审核'}
-            </button>
+            </button> : <span className="muted">只读</span>}
           </div>
           {openId === item.id ? (
             <div className="queue-form">
