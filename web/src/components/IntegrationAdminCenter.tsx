@@ -49,13 +49,20 @@ export function AdminOperations() {
   const [backups, setBackups] = useState<BackupEntry[]>([])
   const [error, setError] = useState<Error | null>(null)
   const [loading, setLoading] = useState(true)
-  const load = useCallback(async () => {
-    setLoading(true); setError(null)
+  const load = useCallback(async (background = false) => {
+    if (!background) setLoading(true)
+    setError(null)
     try { const [nextHealth, nextBackups] = await Promise.all([client.getAdminHealth(), client.listBackups()]); setHealth(nextHealth); setBackups(nextBackups) }
     catch (cause) { if (cause instanceof ApiError && cause.status === 403) { setHealth(null); setBackups([]); return }; setError(cause as Error) }
-    finally { setLoading(false) }
+    finally { if (!background) setLoading(false) }
   }, [client])
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void load(true)
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [load])
   if (loading && !health) return null
   if (!health && !error) return null
   return <section className="card admin-operations" aria-label="系统管理">
@@ -63,7 +70,7 @@ export function AdminOperations() {
     {error ? <ErrorBanner error={error} onRetry={() => void load()} /> : null}
     {health ? <><div className="grid"><Stat label="健康状态" value={systemStatus(health.status)} /><Stat label="排队调用" value={health.queue_status.queued_calls} /><Stat label="缓存命中率" value={`${(health.cache_stats.hit_rate * 100).toFixed(1)}%`} /><Stat label="备份数量" value={backups.length} /></div>
       <dl className="admin-details"><dt>模型</dt><dd>{health.model_metadata.model_name || '不可用'} · {health.model_metadata.quantization || '未知'} · 上下文 {health.model_metadata.context_size || '—'}</dd><dt>队列</dt><dd>{health.queue_status.active_llm_calls} 个 LLM 调用中 / {health.queue_status.active_embedding_calls} 个嵌入调用中 / {health.queue_status.total_errors} 个错误</dd><dt>缓存</dt><dd>{health.cache_stats.size} / {health.cache_stats.max_entries} 条目；已淘汰 {health.cache_stats.evictions} 条</dd><dt>最近失败</dt><dd>{health.issues.length ? health.issues.map((issue) => systemMessage(issue.message ?? issue.code ?? '未知问题')).join('；') : '暂无上报'}</dd><dt>备份状态</dt><dd>{backups[0] ? `${systemStatus(backups[0].status)} · ${backups[0].timestamp || backups[0].name}` : '暂无备份'}</dd></dl>
-      {health.gpu_metrics.length ? <p className="muted">GPU：{health.gpu_metrics.map((gpu) => `${gpu.name || `设备 ${gpu.device_id}`} ${gpu.vram_used_mb.toFixed(0)}/${gpu.vram_total_mb.toFixed(0)} MB`).join(' · ')}</p> : null}
+      {health.gpu_metrics.length ? <p className="muted">GPU：{health.gpu_metrics.map((gpu) => `${gpu.name || `设备 ${gpu.device_id}`} · 显存 ${gpu.vram_used_mb.toFixed(0)}/${gpu.vram_total_mb.toFixed(0)} MB · 利用率 ${gpu.utilization_pct.toFixed(0)}% · ${gpu.temperature_c.toFixed(0)}°C`).join('；')}</p> : null}
     </> : <LoadingBlock label="正在加载系统运行状态…" />}
   </section>
 }
