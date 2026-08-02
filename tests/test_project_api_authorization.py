@@ -31,6 +31,10 @@ def test_core_project_apis_require_login_and_filter_projects(tmp_path: Path) -> 
         assert client.get("/api/projects").status_code == 401
         created = client.post("/api/projects", headers=admin, json={"project_id": "private-project", "name": "Private"})
         assert created.status_code == 201
+        assert client.post(
+            "/api/projects", headers=member,
+            json={"project_id": "member-project", "name": "Member"},
+        ).status_code == 403
         assert client.get("/api/projects", headers=admin).json()[0]["project_id"] == "private-project"
         assert client.get("/api/projects", headers=member).json() == []
         assert client.get("/api/projects/private-project", headers=member).status_code == 403

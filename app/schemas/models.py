@@ -592,6 +592,7 @@ class TokenResponse(BaseModel):
     user_id: str
     username: str
     display_name: str
+    is_system_admin: bool = False
 
 
 class UserProfile(BaseModel):
@@ -599,6 +600,7 @@ class UserProfile(BaseModel):
     username: str
     display_name: str
     is_active: bool = True
+    is_system_admin: bool = False
 
 
 class ProjectMemberEntry(BaseModel):

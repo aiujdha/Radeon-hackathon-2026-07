@@ -28,6 +28,7 @@ export interface TokenResponse {
   user_id: string
   username: string
   display_name: string
+  is_system_admin: boolean
 }
 
 // maps: UserProfile
@@ -36,6 +37,7 @@ export interface UserProfile {
   username: string
   display_name: string
   is_active: boolean
+  is_system_admin: boolean
 }
 
 // ---------------------------------------------------------------------------

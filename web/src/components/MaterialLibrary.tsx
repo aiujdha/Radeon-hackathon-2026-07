@@ -24,7 +24,7 @@ function downloadTaskTemplate(): void {
   URL.revokeObjectURL(href)
 }
 
-export function MaterialLibrary({ projectId }: { projectId: string }) {
+export function MaterialLibrary({ projectId, canWrite }: { projectId: string; canWrite: boolean }) {
   const { client } = useAuth()
   const [files, setFiles] = useState<ProjectFileEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -80,12 +80,12 @@ export function MaterialLibrary({ projectId }: { projectId: string }) {
   }
 
   return <section className="card material-library" aria-label="Material library">
-    <div className="card-title"><div><h2>项目资料</h2><p>先上传至少一份项目资料；任务可以上传 CSV/XLSX，或在任务工作台持续维护。</p></div><div className="upload-actions">
+    <div className="card-title"><div><h2>项目资料</h2><p>先上传至少一份项目资料；任务可以上传 CSV/XLSX，或在任务工作台持续维护。</p></div>{canWrite ? <div className="upload-actions">
       <label className="file-button">上传项目资料<input type="file" disabled={uploading} accept=".md,.txt,.pdf,.docx,.xlsx" onChange={(event) => void upload(event, false)} /></label>
       <label className="file-button">上传任务表<input type="file" disabled={uploading} accept=".csv,.xlsx" onChange={(event) => void upload(event, true)} /></label>
       <button type="button" className="text-button" onClick={downloadTaskTemplate}>下载任务表模板</button>
-    </div></div>
+    </div> : <p className="muted">只读访客不能上传或下载原始项目文件。</p>}</div>
     {error ? <ErrorBanner error={error} onRetry={() => void load()} /> : null}
-    {loading ? <LoadingBlock label="正在加载项目资料…" /> : files.length === 0 ? <EmptyState title="还没有上传资料" hint="第一步：上传项目资料；第二步：上传任务表或在任务工作台创建任务；最后生成报告。" /> : <table><thead><tr><th>文件</th><th>类型</th><th>状态</th><th>大小</th><th>更新时间</th><th /></tr></thead><tbody>{files.map((file) => <tr key={file.relative_path}><td>{file.filename}</td><td>{file.is_task_file ? '任务表' : '项目资料'}</td><td><span className={`state state-${file.processing_status}`}>{file.processing_status === 'indexed' ? `已索引（v${file.index_version}）` : '已上传，下一次运行时索引'}</span></td><td>{formatBytes(file.size_bytes)}</td><td>{formatDate(file.updated_at)}</td><td><button type="button" className="text-button" disabled={uploading} onClick={() => void download(file)}>下载</button></td></tr>)}</tbody></table>}
+    {loading ? <LoadingBlock label="正在加载项目资料…" /> : files.length === 0 ? <EmptyState title="还没有上传资料" hint="第一步：上传项目资料；第二步：上传任务表或在任务工作台创建任务；最后生成报告。" /> : <table><thead><tr><th>文件</th><th>类型</th><th>状态</th><th>大小</th><th>更新时间</th><th /></tr></thead><tbody>{files.map((file) => <tr key={file.relative_path}><td>{file.filename}</td><td>{file.is_task_file ? '任务表' : '项目资料'}</td><td><span className={`state state-${file.processing_status}`}>{file.processing_status === 'indexed' ? `已索引（v${file.index_version}）` : '已上传，下一次运行时索引'}</span></td><td>{formatBytes(file.size_bytes)}</td><td>{formatDate(file.updated_at)}</td><td>{canWrite ? <button type="button" className="text-button" disabled={uploading} onClick={() => void download(file)}>下载</button> : <span className="muted">只读</span>}</td></tr>)}</tbody></table>}
   </section>
 }

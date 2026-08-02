@@ -6,6 +6,7 @@ import { TaskWorkbench } from '../components/TaskWorkbench'
 import { RiskReportCenter } from '../components/RiskReportCenter'
 import { CollaborationCenter } from '../components/CollaborationCenter'
 import { AdminOperations, IntegrationAdminCenter } from '../components/IntegrationAdminCenter'
+import { canWriteProject, PROJECT_ROLE_LABELS, type ProjectRole } from '../auth/roles'
 import { getReportReadiness } from '../features/preflight'
 import type { Project, ProjectCreate, ProjectOverview, RunProgress, RunState, RunStatus } from '../api/dto'
 
@@ -31,7 +32,7 @@ function formatDate(value: string | null | undefined): string {
 }
 
 export function DashboardPage() {
-  const { client } = useAuth()
+  const { client, user } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [overview, setOverview] = useState<ProjectOverview | null>(null)
@@ -41,6 +42,7 @@ export function DashboardPage() {
   const [error, setError] = useState<Error | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionPending, setActionPending] = useState(false)
+  const [projectRole, setProjectRole] = useState<ProjectRole | null>(null)
 
   const selectedRun = useMemo(
     () => runs.find((run) => run.run_id === selectedRunId) ?? null,
@@ -65,18 +67,20 @@ export function DashboardPage() {
   const loadProjectData = useCallback(async (projectId: string) => {
     setError(null)
     try {
-      const [nextOverview, nextRuns] = await Promise.all([
+      const [nextOverview, nextRuns, members] = await Promise.all([
         client.getOverview(projectId),
         client.listRuns(projectId),
+        client.listMembers(projectId),
       ])
       setOverview(nextOverview)
       setRuns(nextRuns)
+      setProjectRole(members.find((member) => member.user_id === user?.user_id)?.role ?? null)
       setSelectedRunId((current) => current && nextRuns.some((run) => run.run_id === current)
         ? current : nextRuns[0]?.run_id ?? null)
     } catch (cause) {
       setError(cause as Error)
     }
-  }, [client])
+  }, [client, user?.user_id])
 
   useEffect(() => { void loadProjects() }, [loadProjects])
   useEffect(() => {
@@ -84,6 +88,7 @@ export function DashboardPage() {
     setRuns([])
     setSelectedRunId(null)
     setProgress(null)
+    setProjectRole(null)
     if (selectedId) void loadProjectData(selectedId)
   }, [loadProjectData, selectedId])
 
@@ -163,21 +168,25 @@ export function DashboardPage() {
         </select> : null}
       </PageHeader>
 
-      <ProjectCreator autoOpen={!loading && projects.length === 0} onCreated={async (project) => {
+      {user?.is_system_admin ? <ProjectCreator autoOpen={!loading && projects.length === 0} onCreated={async (project) => {
         await loadProjects()
         setSelectedId(project.project_id)
-      }} />
+      }} /> : null}
 
       {error ? <ErrorBanner error={error} onRetry={() => selectedId ? void loadProjectData(selectedId) : void loadProjects()} /> : null}
       {loading ? <LoadingBlock label="正在加载可访问项目…" /> : null}
       {!loading && projects.length === 0 ? <EmptyState title="还没有可访问的项目" hint="从上方创建你的第一个项目；创建者会自动成为该项目管理员。" /> : null}
       {selectedId && overview ? <OverviewView overview={overview} /> : null}
+      {selectedId && projectRole ? <p className={`access-banner ${projectRole === 'guest' ? 'read-only' : ''}`}>
+        当前项目角色：{PROJECT_ROLE_LABELS[projectRole]}。
+        {projectRole === 'guest' ? ' 只读模式：可查看项目数据和证据，不能上传、导入、修改任务或生成报告。' : ' 你可以在当前项目权限范围内协作。'}
+      </p> : null}
       <AdminOperations />
-      {selectedId ? <MaterialLibrary projectId={selectedId} /> : null}
-      {selectedId ? <TaskWorkbench projectId={selectedId} /> : null}
+      {selectedId ? <MaterialLibrary projectId={selectedId} canWrite={canWriteProject(projectRole)} /> : null}
+      {selectedId ? <TaskWorkbench projectId={selectedId} canWrite={canWriteProject(projectRole)} /> : null}
       {selectedId ? <RiskReportCenter projectId={selectedId} /> : null}
       {selectedId ? <CollaborationCenter projectId={selectedId} /> : null}
-      {selectedId ? <IntegrationAdminCenter projectId={selectedId} /> : null}
+      {selectedId && user?.is_system_admin ? <IntegrationAdminCenter projectId={selectedId} /> : null}
       {selectedId ? (
         <RunCenter projectId={selectedId} runs={runs} selectedRun={selectedRun} progress={progress}
           actionPending={actionPending} onStart={startRun} onSelect={setSelectedRunId}

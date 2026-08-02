@@ -40,7 +40,7 @@ function allowedTargets(status: string): PhaseFTaskStatus[] {
   return TASK_ALLOWED_TRANSITIONS[status as PhaseFTaskStatus] ?? []
 }
 
-export function TaskWorkbench({ projectId }: { projectId: string }) {
+export function TaskWorkbench({ projectId, canWrite }: { projectId: string; canWrite: boolean }) {
   const { client, user } = useAuth()
   const [tab, setTab] = useState<TabId>('tasks')
   const [tasks, setTasks] = useState<TaskRecord[]>([])
@@ -78,20 +78,20 @@ export function TaskWorkbench({ projectId }: { projectId: string }) {
       <div className="tab-bar" role="tablist" aria-label="任务工作台分区">
         <button type="button" role="tab" aria-selected={tab === 'tasks'} className={tab === 'tasks' ? 'tab selected' : 'tab'} onClick={() => setTab('tasks')}>任务（{tasks.length}）</button>
         <button type="button" role="tab" aria-selected={tab === 'queue'} className={tab === 'queue' ? 'tab selected' : 'tab'} onClick={() => setTab('queue')}>待确认队列（{queue.length}）</button>
-        <button type="button" role="tab" aria-selected={tab === 'import'} className={tab === 'import' ? 'tab selected' : 'tab'} onClick={() => setTab('import')}>导入 CSV/XLSX</button>
+        {canWrite ? <button type="button" role="tab" aria-selected={tab === 'import'} className={tab === 'import' ? 'tab selected' : 'tab'} onClick={() => setTab('import')}>导入 CSV/XLSX</button> : null}
         <button type="button" role="tab" aria-selected={tab === 'audit'} className={tab === 'audit' ? 'tab selected' : 'tab'} onClick={() => setTab('audit')}>审计记录</button>
       </div>
       {error ? <ErrorBanner error={error} onRetry={() => void load()} /> : null}
       {loading ? <LoadingBlock label="正在加载任务工作台…" /> : null}
       {!loading && tab === 'tasks' ? (
         <TaskListPanel projectId={projectId} tasks={tasks} statusFilter={statusFilter}
-          onStatusFilter={setStatusFilter} onChanged={load} />
+          onStatusFilter={setStatusFilter} onChanged={load} canWrite={canWrite} />
       ) : null}
       {!loading && tab === 'queue' ? (
         <ConfirmationQueuePanel projectId={projectId} queue={queue}
-          operator={user?.username ?? ''} onChanged={load} />
+          operator={canWrite ? user?.username ?? '' : ''} onChanged={load} />
       ) : null}
-      {!loading && tab === 'import' ? (
+      {!loading && tab === 'import' && canWrite ? (
         <ImportPanel projectId={projectId} operator={user?.username ?? ''} onImported={load} />
       ) : null}
       {!loading && tab === 'audit' ? <AuditPanel projectId={projectId} /> : null}
@@ -103,9 +103,9 @@ export function TaskWorkbench({ projectId }: { projectId: string }) {
 // Tasks: list + client-side filters + detail (history, transitions)
 // ---------------------------------------------------------------------------
 
-function TaskListPanel({ projectId, tasks, statusFilter, onStatusFilter, onChanged }: {
+function TaskListPanel({ projectId, tasks, statusFilter, onStatusFilter, onChanged, canWrite }: {
   projectId: string; tasks: TaskRecord[]; statusFilter: string
-  onStatusFilter: (value: string) => void; onChanged: () => Promise<void>
+  onStatusFilter: (value: string) => void; onChanged: () => Promise<void>; canWrite: boolean
 }) {
   const [ownerFilter, setOwnerFilter] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
@@ -180,7 +180,7 @@ function TaskListPanel({ projectId, tasks, statusFilter, onStatusFilter, onChang
           </table>
           {selectedTask ? (
             <TaskDetail key={selectedTask.id} projectId={projectId} task={selectedTask}
-              onChanged={onChanged} />
+              onChanged={onChanged} canWrite={canWrite} />
           ) : <p className="muted">选择一项任务可查看详情、变更历史和状态流转。</p>}
         </div>
       )}
@@ -188,8 +188,8 @@ function TaskListPanel({ projectId, tasks, statusFilter, onStatusFilter, onChang
   )
 }
 
-function TaskDetail({ projectId, task, onChanged }: {
-  projectId: string; task: TaskRecord; onChanged: () => Promise<void>
+function TaskDetail({ projectId, task, onChanged, canWrite }: {
+  projectId: string; task: TaskRecord; onChanged: () => Promise<void>; canWrite: boolean
 }) {
   const { client } = useAuth()
   const [history, setHistory] = useState<TaskChangeRecord[]>([])
@@ -246,7 +246,7 @@ function TaskDetail({ projectId, task, onChanged }: {
       </dl>
 
       <h4>变更状态</h4>
-      {targets.length === 0 ? (
+      {!canWrite ? <p className="muted">只读访客不能变更任务状态。</p> : targets.length === 0 ? (
         <p className="muted">该任务已处于最终状态，不能继续流转。</p>
       ) : (
         <div className="transition-form">

@@ -98,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username: resp.username,
       display_name: resp.display_name,
       is_active: true,
+      is_system_admin: resp.is_system_admin,
     })
   }
 

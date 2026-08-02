@@ -70,6 +70,7 @@ describe('RequireAuth', () => {
           username: 'demo',
           display_name: 'Demo',
           is_active: true,
+          is_system_admin: false,
         },
       }),
     )

@@ -18,6 +18,7 @@ export const MOCK_TOKEN: TokenResponse = {
   user_id: 'mock-user-1',
   username: 'demo',
   display_name: 'Demo User',
+  is_system_admin: false,
 }
 
 export const MOCK_USER: UserProfile = {
@@ -25,6 +26,7 @@ export const MOCK_USER: UserProfile = {
   username: 'demo',
   display_name: 'Demo User',
   is_active: true,
+  is_system_admin: false,
 }
 
 export const MOCK_PROJECTS: Project[] = [
