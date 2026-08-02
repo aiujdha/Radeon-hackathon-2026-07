@@ -67,9 +67,14 @@ export function TaskWorkbench({ projectId, canWrite }: { projectId: string; canW
   }, [client, projectId, statusFilter])
 
   useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    if (!loading && canWrite && tab === 'tasks' && tasks.length === 0 && queue.length === 0) {
+      setTab('import')
+    }
+  }, [canWrite, loading, queue.length, tab, tasks.length])
 
   return (
-    <section className="card task-workbench" aria-label="任务工作台">
+    <section id="task-workbench" className="card task-workbench" aria-label="任务工作台">
       <div className="card-title">
         <div>
           <h2>任务工作台</h2><p>确认候选任务、导入任务表，并在审计记录下维护任务状态。</p>

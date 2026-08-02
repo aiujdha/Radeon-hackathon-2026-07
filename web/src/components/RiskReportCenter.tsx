@@ -28,6 +28,7 @@ export function RiskReportCenter({ projectId, canWrite }: { projectId: string; c
   const [members, setMembers] = useState<ProjectMemberEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const [showWorkspace, setShowWorkspace] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -40,10 +41,22 @@ export function RiskReportCenter({ projectId, canWrite }: { projectId: string; c
   }, [client, projectId])
 
   useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    if (risks.length > 0 || reports.length > 0) setShowWorkspace(true)
+  }, [reports.length, risks.length])
   const role = members.find((member) => member.user_id === user?.user_id)?.role
   const canManage = role === 'admin' || role === 'pm'
 
-  return <section className="card risk-report-center" aria-label="风险与报告中心">
+  if (!loading && !error && !showWorkspace && risks.length === 0 && reports.length === 0) {
+    return <section id="risk-report-center" className="card deferred-center" aria-label="风险与报告中心">
+      <div><h2>风险与报告</h2><p>完成项目报告运行后，系统会在这里集中展示风险、报告草稿与审批记录。</p></div>
+      <div className="deferred-center-content"><strong>当前没有需要处理的风险或报告。</strong><span>这是正常的首次使用状态，不需要先在这里填写内容。</span>
+        {canWrite ? <button type="button" onClick={() => setShowWorkspace(true)}>查看报告草稿工作区</button> : null}
+      </div>
+    </section>
+  }
+
+  return <section id="risk-report-center" className="card risk-report-center" aria-label="风险与报告中心">
     <div className="card-title"><div><h2>风险与报告中心</h2><p>查看项目风险，并准备可供审批的正式报告。</p></div><button type="button" onClick={() => void load()} disabled={loading}>刷新</button></div>
     <div className="tab-bar"><button type="button" className={`tab ${tab === 'risks' ? 'selected' : ''}`} onClick={() => setTab('risks')}>风险（{risks.length}）</button><button type="button" className={`tab ${tab === 'reports' ? 'selected' : ''}`} onClick={() => setTab('reports')}>报告（{reports.length}）</button></div>
     {error ? <ErrorBanner error={error} onRetry={() => void load()} /> : null}

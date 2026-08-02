@@ -79,7 +79,7 @@ export function MaterialLibrary({ projectId, canWrite }: { projectId: string; ca
     }
   }
 
-  return <section className="card material-library" aria-label="Material library">
+  return <section id="project-materials" className="card material-library" aria-label="项目资料">
     <div className="card-title"><div><h2>项目资料</h2><p>先上传至少一份项目资料；任务可以上传 CSV/XLSX，或在任务工作台持续维护。</p></div>{canWrite ? <div className="upload-actions">
       <label className="file-button">上传项目资料<input type="file" disabled={uploading} accept=".md,.txt,.pdf,.docx,.xlsx" onChange={(event) => void upload(event, false)} /></label>
       <label className="file-button">上传任务表<input type="file" disabled={uploading} accept=".csv,.xlsx" onChange={(event) => void upload(event, true)} /></label>
