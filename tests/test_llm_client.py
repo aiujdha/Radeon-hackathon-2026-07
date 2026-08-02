@@ -31,6 +31,7 @@ def test_generate_text_uses_configured_openai_endpoint() -> None:
     assert asyncio.run(client.generate_text("Say hello")) == "service ready"
     assert requests[0]["model"] == "qwen3.6-office-agent"
     assert requests[0]["messages"][-1]["content"] == "Say hello"
+    assert requests[0]["max_tokens"] == 384
 
 
 def test_generate_json_retries_once_after_invalid_output() -> None:

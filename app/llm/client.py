@@ -72,7 +72,12 @@ class LLMClient:
         raise LLMClientError(f"model did not produce valid {schema.__name__} JSON after one retry: {last_error}")
 
     async def _complete(self, messages: list[dict[str, str]], *, temperature: float) -> str:
-        payload = {"model": self._settings.llm_model, "messages": messages, "temperature": temperature}
+        payload = {
+            "model": self._settings.llm_model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": self._settings.llm_max_tokens,
+        }
         try:
             async with httpx.AsyncClient(
                 timeout=self._settings.llm_timeout_seconds, transport=self._transport

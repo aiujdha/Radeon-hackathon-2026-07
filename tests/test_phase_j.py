@@ -12,6 +12,7 @@ import asyncio
 from pathlib import Path
 
 import pytest
+import httpx
 from fastapi.testclient import TestClient
 
 from app.config import Settings
@@ -360,6 +361,20 @@ def test_parse_current_rocm_smi_json():
     assert metrics[0].vram_used_mb == pytest.approx(46670.0, abs=1)
     assert metrics[0].utilization_pct == 100.0
     assert metrics[0].temperature_c == 46.0
+
+
+@pytest.mark.asyncio
+async def test_model_metadata_uses_openai_v1_models_path():
+    """Telemetry must not concatenate `/v1` and `models` into `v1models`."""
+    from app.services.monitor import HealthMonitor
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/models"
+        return httpx.Response(200, json={"data": [{"id": "qwen", "meta": {"n_ctx": 16384}}]})
+
+    metadata = await HealthMonitor(Settings()).collect_model_metadata(httpx.MockTransport(handler))
+    assert metadata.model_name == "qwen"
+    assert metadata.context_size == 16384
 
 
 @pytest.mark.asyncio

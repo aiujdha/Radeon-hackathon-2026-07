@@ -271,7 +271,7 @@ class HealthMonitor:
                 transport=transport, timeout=10.0
             ) as client:
                 resp = await client.get(
-                    f"{self._settings.llm_base_url}models"
+                    f"{str(self._settings.llm_base_url).rstrip('/')}/models"
                 )
                 resp.raise_for_status()
                 data = resp.json()
@@ -279,15 +279,16 @@ class HealthMonitor:
                 models = data.get("data", [])
                 if models:
                     m = models[0]
-                    model_details = m.get("meta", {}) if isinstance(m.get("meta"), dict) else {}
+                    model_details = (
+                        m.get("meta", {}) if isinstance(m.get("meta"), dict) else {}
+                    )
                     meta = ModelMetadata(
                         model_name=m.get("id", ""),
                         model_path="",
                         quantization=self._infer_quantization(m.get("id", "")),
                         context_size=int(model_details.get("n_ctx", 0) or 0),
-                        # llama.cpp's OpenAI endpoint does not report loaded
-                        # layers.  Do not mislabel the agent step limit as GPU
-                        # layers in an operations dashboard.
+                        # The OpenAI-compatible endpoint does not expose loaded
+                        # GPU layer count; never mislabel agent steps.
                         gpu_layers=0,
                         backend=self._backend,
                         llama_cpp_version="",

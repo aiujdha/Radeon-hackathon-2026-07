@@ -150,9 +150,9 @@ _EXPLAIN_PROMPT_TEMPLATE = """你是一个项目进度核验助手。
 
 请严格按照以下JSON格式输出（不要包含任何其他文字）:
 {{
-  "explanation": "用2-3句话解释规则为什么会得出'已{rule_status}'这个判定，引用证据或缺失项具体说明",
-  "risk_reason": "分析风险等级的原因，包括但不限于：证据缺失、验收标准未匹配、临近截止日、交付物不完整等",
-  "recommendation": "给出1-2条具体可执行的行动建议"
+  "explanation": "不超过120个中文字符，解释'已{rule_status}'的规则依据",
+  "risk_reason": "不超过80个中文字符，说明风险原因",
+  "recommendation": "不超过80个中文字符，给出1-2条可执行建议"
 }}
 """
 
@@ -164,7 +164,9 @@ def build_explanation_prompt(check_result: CheckResult) -> str:
     """
     task = check_result.task
     evidence_text = "\n".join(
-        f"- [{ei.source or 'unknown'}] {ei.content[:300]}"
+        # Status is rule-owned. A concise source-labelled excerpt is enough
+        # for the model explanation and prevents long repeated RAG prompts.
+        f"- [{ei.source or 'unknown'}] {ei.content[:180]}"
         for ei in check_result.evidence_items
     ) or "（无证据）"
 

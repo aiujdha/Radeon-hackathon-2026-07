@@ -59,7 +59,7 @@ the binary and model paths with those on your cloud instance.
 /workspace/runtime/llama.cpp/build/bin/llama-server \
   --model /workspace/models/qwen3.6/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf \
   --alias qwen3.6-office-agent --host 127.0.0.1 --port 8000 \
-  --n-gpu-layers 999 --ctx-size 32768 --jinja
+  --n-gpu-layers 999 --ctx-size 16384 --jinja
 ```
 
 ```bash
@@ -81,6 +81,10 @@ curl http://127.0.0.1:8000/v1/models
 > The MVP verification configuration loads the same model twice, so it is
 > GPU-memory intensive. Production should use a smaller dedicated embedding
 > model or a shared-service deployment.
+
+> The recommended 35B performance profile uses a 16K chat context. Project
+> reports retrieve concise evidence excerpts and normally do not require 32K.
+> Raise it to 32K only for genuinely long single-document work.
 
 ## Start the application
 
