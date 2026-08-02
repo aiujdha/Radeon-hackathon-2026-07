@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -22,7 +23,8 @@ def _write_tasks(settings: Settings) -> None:
     source.mkdir(parents=True)
     (source / "tasks.csv").write_text(
         "title,assignee,deadline,priority,acceptance_criteria,original_source\n"
-        "API verification,Ada,2026-08-01,high,test report,weekly plan\n",
+        "API verification,Ada,"
+        f"{(date.today() + timedelta(days=30)).isoformat()},high,test report,weekly plan\n",
         encoding="utf-8",
     )
 
@@ -36,7 +38,7 @@ def test_load_tasks_is_project_scoped_and_returns_public_tasks(tmp_path: Path) -
     assert len(tasks) == 1
     assert tasks[0].task_id.startswith("task-")
     assert tasks[0].owner == "Ada"
-    assert tasks[0].due_date.isoformat() == "2026-08-01"
+    assert tasks[0].due_date == date.today() + timedelta(days=30)
 
     derived = settings.project_root / "demo-project" / "derived"
     derived.mkdir()
