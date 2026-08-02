@@ -48,6 +48,10 @@ export function DashboardPage() {
     () => runs.find((run) => run.run_id === selectedRunId) ?? null,
     [runs, selectedRunId],
   )
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.project_id === selectedId) ?? null,
+    [projects, selectedId],
+  )
 
   const loadProjects = useCallback(async () => {
     setLoading(true)
@@ -184,6 +188,12 @@ export function DashboardPage() {
       {selectedId && projectRole ? <p className={`access-banner ${projectRole === 'guest' ? 'read-only' : ''}`}>
         当前项目角色：{PROJECT_ROLE_LABELS[projectRole]}。{roleCapabilitySummary(projectRole)}
       </p> : null}
+      {selectedId && overview && selectedProject ? <FirstUseGuide
+        sourceFileCount={selectedProject.source_file_count}
+        taskCount={overview.task_stats.total ?? 0}
+        runCount={runs.length}
+        canWrite={canWriteProject(projectRole)}
+      /> : null}
       <AdminOperations />
       {selectedId ? <MaterialLibrary projectId={selectedId} canWrite={canWriteProject(projectRole)} /> : null}
       {selectedId ? <TaskWorkbench projectId={selectedId} canWrite={canWriteProject(projectRole)} /> : null}
@@ -200,6 +210,37 @@ export function DashboardPage() {
       ) : null}
     </div>
   )
+}
+
+function FirstUseGuide({ sourceFileCount, taskCount, runCount, canWrite }: {
+  sourceFileCount: number; taskCount: number; runCount: number; canWrite: boolean
+}) {
+  const nextStep = sourceFileCount === 0 ? 'materials' : taskCount === 0 ? 'tasks' : 'report'
+  const nextCopy = nextStep === 'materials'
+    ? '上传至少一份项目资料，作为报告检索和证据引用的来源。'
+    : nextStep === 'tasks'
+      ? '导入任务 CSV/XLSX，把已上传的任务表写入任务工作台。'
+      : '资料和任务已就绪，现在可以生成第一份项目报告。'
+
+  const scrollTo = (target: string) => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  return <section className="card first-use-guide" aria-label="开始使用引导">
+    <div><h2>下一步操作</h2><p>{nextCopy}</p></div>
+    <ol className="onboarding-steps">
+      <li className={sourceFileCount > 0 ? 'complete' : nextStep === 'materials' ? 'current' : ''}>
+        <strong>1. 上传项目资料</strong><span>{sourceFileCount > 0 ? `已上传 ${sourceFileCount} 份资料` : '支持 MD、TXT、PDF、DOCX、XLSX'}</span>
+      </li>
+      <li className={taskCount > 0 ? 'complete' : nextStep === 'tasks' ? 'current' : ''}>
+        <strong>2. 导入任务表</strong><span>{taskCount > 0 ? `已有 ${taskCount} 项任务` : '上传后仍需在任务工作台确认导入'}</span>
+      </li>
+      <li className={runCount > 0 ? 'complete' : nextStep === 'report' ? 'current' : ''}>
+        <strong>3. 生成项目报告</strong><span>{runCount > 0 ? `已有 ${runCount} 次运行记录` : '系统将生成带引用的报告、风险清单和下周计划'}</span>
+      </li>
+    </ol>
+    {canWrite ? <div className="actions"><button type="button" className="primary" onClick={() => scrollTo(nextStep === 'materials' ? 'project-materials' : nextStep === 'tasks' ? 'task-workbench' : 'run-center')}>
+      {nextStep === 'materials' ? '去上传资料' : nextStep === 'tasks' ? '去导入任务表' : '去生成报告'}
+    </button></div> : <p className="muted">你具有只读权限，可查看项目数据和报告结果。</p>}
+  </section>
 }
 
 function ProjectCreator({ autoOpen, onCreated }: { autoOpen: boolean; onCreated: (project: Project) => Promise<void> }) {
@@ -261,7 +302,7 @@ function RunCenter({ projectId, runs, selectedRun, progress, actionPending, canW
   projectId: string; runs: RunState[]; selectedRun: RunState | null; progress: RunProgress | null; actionPending: boolean
   canWrite: boolean; onStart: () => void; onSelect: (runId: string) => void; onCancel: () => void; onRetry: () => void; onDownload: (name: string) => void
 }) {
-  return <section className="card run-center" aria-label="运行中心">
+  return <section id="run-center" className="card run-center" aria-label="运行中心">
     <div className="card-title"><div><h2>报告运行中心</h2><p>当前项目：{projectId}</p></div>{canWrite ? <button type="button" className="primary" disabled={actionPending} onClick={onStart}>生成项目报告</button> : null}</div>
     {runs.length === 0 ? <EmptyState title="还没有运行记录" hint="上传项目资料和任务后，即可生成第一份项目报告。" /> : (
       <div className="run-layout"><div className="run-list" aria-label="运行历史">
