@@ -12,6 +12,8 @@ def test_defaults_are_valid() -> None:
     assert str(settings.llm_base_url).rstrip("/").endswith("/v1")
     assert str(settings.embedding_base_url).rstrip("/").endswith("/v1")
     assert settings.agent_max_steps == 8
+    assert settings.llm_timeout_seconds == 90
+    assert settings.llm_max_tokens == 384
 
 
 def test_rejects_invalid_api_port() -> None:
