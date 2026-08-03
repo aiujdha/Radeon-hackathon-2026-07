@@ -18,4 +18,3 @@
 ## Rollback
 
 Delete the `showcase/` directory; application behavior is unaffected.
-

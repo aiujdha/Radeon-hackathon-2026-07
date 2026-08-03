@@ -11,4 +11,3 @@
 1. Open `showcase/index.html` in a modern browser.
 2. Use the navigation links to move to workflow, architecture, and proof sections.
 3. Resize to mobile width and verify the layout becomes one column.
-

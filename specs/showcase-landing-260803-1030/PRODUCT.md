@@ -20,4 +20,3 @@ Provide a concise, public-facing landing page that explains the ProjectPack Offi
 
 - This is not a replacement for the authenticated workbench.
 - This change does not add analytics, external assets, or a production hosting provider.
-
