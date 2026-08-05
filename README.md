@@ -5,6 +5,19 @@ project teams. It imports project reference files and a task list, retrieves
 project-scoped evidence, evaluates task progress with rules plus a local LLM,
 and generates an auditable report bundle.
 
+> **Track 2 · Team PLASMA · AMD Radeon (ROCm) Hackathon 2026-07**
+
+## Demo video
+
+A 3–5 minute end-to-end demonstration running on an AMD Radeon GPU (ROCm) is
+available here:
+
+- **Bilibili:** <https://www.bilibili.com/video/BV14BMB6gEKu/>
+
+The video walks through the full workflow: create project, upload reference
+files and task list, generate the report on the Radeon GPU, and download the
+Markdown report, risk CSV, and next-week plan, with live GPU utilisation shown.
+
 For the official Track 2 submission document, see
 [Project Specification](docs/PROJECT_SPECIFICATION.md).
 
@@ -163,3 +176,18 @@ structured result artifact. It does not overwrite an existing project.
   ```text
   Track 2, PLASMA, ProjectPack Office Agent
   ```
+
+## Track 2 submission checklist
+
+This repository fulfils every required Track 2 deliverable:
+
+- [x] **Project specification document** — [docs/PROJECT_SPECIFICATION.md](docs/PROJECT_SPECIFICATION.md)
+  (application scenarios, agent architecture, core capabilities, model &
+  local-deployment plan, AMD Radeon / ROCm inference-optimisation notes).
+- [x] **Project source code** — `app/`, `scripts/`, `web/` with this README
+  covering environment setup, startup, and dependencies.
+- [x] **Demo video (3–5 min, on AMD Radeon GPU)** —
+  <https://www.bilibili.com/video/BV14BMB6gEKu/>
+- [x] **Supplementary material (PPT / poster)** —
+  [showcase/PLASMA_ProjectPack_Poster.pdf](showcase/PLASMA_ProjectPack_Poster.pdf)
+  and the static [showcase/index.html](showcase/index.html) landing page.
