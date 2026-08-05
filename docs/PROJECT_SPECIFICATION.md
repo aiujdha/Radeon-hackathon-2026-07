@@ -75,7 +75,7 @@ python scripts/start_workbench.py --host 0.0.0.0 --port 7860
 
 The full environment setup, dependency list, model server commands, and
 end-to-end cloud verification command are maintained in the repository
-[`README.md`](../README.md).
+[`PROJECT_README.md`](../PROJECT_README.md).
 
 ## 5. AMD Radeon GPU / ROCm adaptation
 
