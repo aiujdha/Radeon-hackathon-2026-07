@@ -119,5 +119,7 @@ while preserving the project evidence boundary.
 
 - [x] Project specification: this document.
 - [x] Source code and reproducible README: repository root.
-- [ ] 3–5 minute demonstration video on AMD Radeon GPU.
-- [ ] PPT or poster describing value, architecture, and Radeon optimization.
+- [x] 3–5 minute demonstration video on AMD Radeon GPU —
+  <https://www.bilibili.com/video/BV14BMB6gEKu/>
+- [x] PPT or poster describing value, architecture, and Radeon optimization —
+  `showcase/PLASMA_ProjectPack_Poster.pdf`.
